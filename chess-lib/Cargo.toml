@@ -1,0 +1,19 @@
+[package]
+name = "chess-lib"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+console_error_panic_hook = "0.1.7"
+getrandom = { version = "0.2.12", features = ["js"] }
+lazy_static = "1.4.0"
+rand = "0.8.5"
+serde = { version = "1.0.196", features = ["derive"] }
+serde-wasm-bindgen = "0.6.3"
+serde_json = "1.0.114"
+tsify = "0.4.5"
+wasm-bindgen = "0.2.91"
+web-sys = { version = "0.3.68", features = ["console"] }

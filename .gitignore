@@ -1,0 +1,5 @@
+.env
+.sqlx/
+pkg/
+target/
+fly.toml
