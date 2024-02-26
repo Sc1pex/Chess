@@ -1,0 +1,8 @@
+CREATE TABLE games (
+  id UUID PRIMARY KEY,
+  player UUID REFERENCES users(id),
+  moves JSONB NOT NULL,
+  result TEXT NOT NULL,
+
+  played_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
