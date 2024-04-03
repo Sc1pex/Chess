@@ -1,18 +1,13 @@
-#![allow(dead_code)]
-
 use crate::{
     bitboard::BitBoard,
-    console_log,
     movegen::{square_attacked, Move, SpecialMove},
     piece::*,
     square::Square,
 };
 use serde::{Deserialize, Serialize};
-use wasm_bindgen::prelude::*;
 pub const DEFAULT_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[wasm_bindgen]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Board {
     pub w_pawn: BitBoard,
     pub w_knight: BitBoard,
@@ -32,6 +27,8 @@ pub struct Board {
     pub occ: BitBoard,
 
     pub side_to_move: Color,
+    pub in_check: bool,
+
     pub(crate) en_passant: Option<Square>,
     pub(crate) can_castle: u8,
 }
@@ -44,24 +41,9 @@ pub(crate) enum Castle {
     BlackQueen = 0b1000,
 }
 
-#[wasm_bindgen]
-impl Board {
-    pub fn to_js_value(&self) -> JsValue {
-        self.serialize(
-            &serde_wasm_bindgen::Serializer::new().serialize_large_number_types_as_bigints(true),
-        )
-        .unwrap()
-    }
-
-    pub fn from_js_value(value: JsValue) -> Board {
-        serde_wasm_bindgen::from_value(value).unwrap()
-    }
-}
-
-#[wasm_bindgen]
 impl Board {
     pub fn make_move(&mut self, m: &Move) -> bool {
-        let bb = self.board(m.piece);
+        let bb = self.board_mut(m.piece);
         bb.clear(m.from);
         bb.set(m.to);
         self.en_passant = None;
@@ -80,12 +62,10 @@ impl Board {
                 } else if m.to == Square::A8 {
                     self.can_castle &= !(Castle::BlackQueen as u8)
                 }
-            } else {
-                if m.to == Square::H1 {
-                    self.can_castle &= !(Castle::WhiteKing as u8)
-                } else if m.to == Square::A1 {
-                    self.can_castle &= !(Castle::WhiteQueen as u8)
-                }
+            } else if m.to == Square::H1 {
+                self.can_castle &= !(Castle::WhiteKing as u8)
+            } else if m.to == Square::A1 {
+                self.can_castle &= !(Castle::WhiteQueen as u8)
             }
         }
         match m.special {
@@ -173,11 +153,17 @@ impl Board {
             return false;
         }
 
+        let king = self.boards_color(self.side_to_move.opposite())[5]
+            .0
+            .trailing_zeros() as u64;
+        self.in_check = square_attacked(self, king, self.side_to_move);
+
         self.side_to_move = self.side_to_move.opposite();
+
         true
     }
 
-    pub(crate) fn board(&mut self, piece: Piece) -> &mut BitBoard {
+    pub(crate) fn board_mut(&mut self, piece: Piece) -> &mut BitBoard {
         match piece.color {
             Color::White => match piece.kind {
                 PieceKind::Pawn => &mut self.w_pawn,
@@ -194,6 +180,27 @@ impl Board {
                 PieceKind::Rook => &mut self.b_rook,
                 PieceKind::Queen => &mut self.b_queen,
                 PieceKind::King => &mut self.b_king,
+            },
+        }
+    }
+
+    pub(crate) fn board(&self, piece: Piece) -> &BitBoard {
+        match piece.color {
+            Color::White => match piece.kind {
+                PieceKind::Pawn => &self.w_pawn,
+                PieceKind::Knight => &self.w_knight,
+                PieceKind::Bishop => &self.w_bishop,
+                PieceKind::Rook => &self.w_rook,
+                PieceKind::Queen => &self.w_queen,
+                PieceKind::King => &self.w_king,
+            },
+            Color::Black => match piece.kind {
+                PieceKind::Pawn => &self.b_pawn,
+                PieceKind::Knight => &self.b_knight,
+                PieceKind::Bishop => &self.b_bishop,
+                PieceKind::Rook => &self.b_rook,
+                PieceKind::Queen => &self.b_queen,
+                PieceKind::King => &self.b_king,
             },
         }
     }
@@ -218,33 +225,14 @@ impl Board {
             ],
         }
     }
-
-    pub fn pieces(&self) -> JsValue {
-        let mut pieces: Vec<(usize, Piece)> = Vec::new();
-        for i in 0..64 {
-            if let Some(p) = self.piece(i as u64) {
-                pieces.push((i, p));
-            }
-        }
-
-        serde_wasm_bindgen::to_value(&pieces).unwrap()
-    }
-
-    pub fn print(&self) {
-        console_log!("{}", self);
-    }
 }
 
-#[wasm_bindgen]
 impl Board {
     pub fn start_pos() -> Board {
         Self::from_fen(DEFAULT_FEN)
     }
 
     pub fn from_fen(fen: &str) -> Board {
-        // TODO: move to other function
-        console_error_panic_hook::set_once();
-
         let mut s = Self::default();
 
         let mut parts = fen.split_whitespace();

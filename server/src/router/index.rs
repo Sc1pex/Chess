@@ -44,7 +44,10 @@ async fn last_games(state: &AppState) -> String {
     )
     .fetch_all(&state.pool)
     .await
-    .unwrap();
+    .unwrap()
+    .into_iter()
+    .map(|g| g.into())
+    .collect();
 
     games_list(games, None)
 }

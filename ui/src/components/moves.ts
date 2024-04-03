@@ -1,4 +1,4 @@
-import { Move, PieceKind } from "chess-lib";
+import { WasmMove, PieceKind, CastleMove } from "chess-lib";
 import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { createRef, ref } from "lit/directives/ref.js";
@@ -9,12 +9,12 @@ import {
   chevron_right,
 } from "../icons";
 
-type MovePair = { white: Move; black: Move | undefined };
+type MovePair = { white: WasmMove; black: WasmMove | undefined };
 
 @customElement("moves-el")
 export class MovesEl extends LitElement {
   @property({ type: Array })
-  moves: Move[] = [];
+  moves: WasmMove[] = [];
   @property()
   handle_ply_select: (ply: number) => void = () => {};
   @property({ type: Number })
@@ -189,51 +189,57 @@ export class MovesEl extends LitElement {
   `;
 }
 
-function move_to_str(m: Move): string {
-  if (m.special == "Castle") {
-    if (m.to[0] == "G") {
+function idx_to_square(idx: number): string {
+  const file = String.fromCharCode(97 + (idx % 8));
+  const rank = Math.floor(idx / 8) + 1;
+  return file + rank;
+}
+
+function move_to_str(m: WasmMove): string {
+  if (m.castle !== undefined) {
+    if (m.castle == CastleMove.KingSide) {
       return "O-O";
     } else {
       return "O-O-O";
     }
   }
 
-  if (m.piece.kind == "Pawn") {
+  if (m.piece == PieceKind.Pawn) {
     let move = "";
     if (m.capture) {
-      move = `${m.from[0]}x${m.to}`.toLowerCase();
+      move = `${idx_to_square(m.from)}x${idx_to_square(m.to)}`.toLowerCase();
     } else {
-      move = `${m.to}`.toLowerCase();
+      move = `${idx_to_square(m.to)}`.toLowerCase();
     }
 
-    if (typeof m.special == "object") {
-      move += `=${piece_unicode(m.special.Promotion)}`;
+    if (m.promotion !== undefined) {
+      move += `=${piece_unicode(m.promotion)}`;
     }
 
     return move;
   }
-  let move = piece_unicode(m.piece.kind);
+  let move = piece_unicode(m.piece);
   if (m.capture) {
     move += "x";
   }
-  move += `${m.to}`.toLowerCase();
+  move += `${idx_to_square(m.to)}`.toLowerCase();
 
   return move;
 }
 
 function piece_unicode(kind: PieceKind): string {
   switch (kind) {
-    case "Pawn":
+    case PieceKind.Pawn:
       return "P";
-    case "Knight":
+    case PieceKind.Knight:
       return "N";
-    case "Bishop":
+    case PieceKind.Bishop:
       return "B";
-    case "Rook":
+    case PieceKind.Rook:
       return "R";
-    case "Queen":
+    case PieceKind.Queen:
       return "Q";
-    case "King":
+    case PieceKind.King:
       return "K";
   }
 }

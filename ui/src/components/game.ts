@@ -1,11 +1,11 @@
 import {
-  Board,
+  WasmBoard,
   Color,
-  Game,
   GameState,
-  Move,
-  Piece,
+  WasmGame,
+  WasmMove,
   opposite_color,
+  BotMove,
 } from "chess-lib";
 import { LitElement, css, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
@@ -15,27 +15,23 @@ const bot_worker = new ComlinkWorker<typeof import("../worker")>(
   new URL("../worker.ts", import.meta.url),
 );
 
-async function run_worker(board: Board): Promise<Move> {
-  const b = board.to_js_value();
-  let m = await bot_worker.bot_turn(b);
-  return new Move(
-    m.from,
-    m.to,
-    new Piece(m.piece.kind, m.piece.color),
-    m.capture,
-    m.special,
-  );
+async function run_worker(board: WasmBoard): Promise<WasmMove> {
+  const board_json = board.to_json();
+  const m = await bot_worker.bot_turn(board_json);
+  const bot_move = BotMove.from_json(m);
+  console.log("Reached depth:", bot_move.depth);
+  return bot_move.m;
 }
 
 @customElement("game-el")
 export class GameEl extends LitElement {
   @state()
-  game: Game = new Game();
+  game: WasmGame = new WasmGame();
   @property()
   game_id: string = "";
   got_moves: boolean = false;
 
-  drawn_board: Board = new Board();
+  drawn_board: WasmBoard = new WasmBoard();
   drawn_histoy: boolean = false;
   drawn_ply: number = 0;
 
@@ -45,58 +41,58 @@ export class GameEl extends LitElement {
   }
 
   bot_color: Color = Color.Black;
-  player_moves = () => {
+  player_moves() {
     if (this.game.side_to_move() == this.bot_color || this.drawn_histoy) {
       return [];
     } else {
       return this.game.legal_moves();
     }
-  };
+  }
 
-  bot_turn = () => {
-    if (this.game.game_state != GameState.InProgress) return;
+  bot_turn() {
+    if (this.game.game_state() != GameState.InProgress) return;
 
     run_worker(this.game.board()).then((m) => {
       this.game.make_move(m);
       this.drawn_board = this.game.board();
       this.drawn_histoy = false;
-      this.drawn_ply = this.game.moves().length;
+      this.drawn_ply = this.game.move_history().length;
       this.handle_game_state_change();
       this.requestUpdate();
     });
-  };
+  }
 
   game_over_div = createRef<HTMLDivElement>();
   game_over_text = createRef<HTMLParagraphElement>();
-  handle_game_state_change = () => {
+  handle_game_state_change() {
     this.game.update_state();
-    if (this.game.game_state != GameState.InProgress) {
-      if (this.game.game_state == GameState.Checkmate) {
+    if (this.game.game_state() != GameState.InProgress) {
+      if (this.game.game_state() == GameState.Checkmate) {
         this.game_over_text.value!.innerText = `Game Over! ${
           Color[opposite_color(this.game.side_to_move())]
         } wins`;
       }
-      if (this.game.game_state == GameState.Stalemate) {
+      if (this.game.game_state() == GameState.Stalemate) {
         this.game_over_text.value!.innerText = "Stalemate!";
       }
-      if (this.game.game_state == GameState.DrawByFiftyMoveRule) {
+      if (this.game.game_state() == GameState.DrawByFiftyMoveRule) {
         this.game_over_text.value!.innerText = "Draw! (50 move rule)";
       }
-      if (this.game.game_state == GameState.DrawByRepetition) {
+      if (this.game.game_state() == GameState.DrawByRepetition) {
         this.game_over_text.value!.innerText = "Draw! (Repetition)";
       }
-      if (this.game.game_state == GameState.DrawByInsufficientMaterial) {
+      if (this.game.game_state() == GameState.DrawByInsufficientMaterial) {
         this.game_over_text.value!.innerText = "Draw! (Insufficient Material)";
       }
       this.game_over_div.value!.style.display = "block";
 
       this.send_game_to_server();
     }
-  };
+  }
 
   send_game_to_server() {
     let result = "Draw";
-    if (this.game.game_state == GameState.Checkmate) {
+    if (this.game.game_state() == GameState.Checkmate) {
       if (this.game.side_to_move() == this.bot_color) {
         result = "Win";
       } else {
@@ -111,14 +107,14 @@ export class GameEl extends LitElement {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        moves: this.game.moves().map((m) => m.json()),
+        moves: this.game.moves_server(),
         result: result,
       }),
     });
   }
 
   reset() {
-    this.game = new Game();
+    this.game = new WasmGame();
     this.game_over_div.value!.style.display = "none";
     this.drawn_board = this.game.board();
     this.drawn_histoy = false;
@@ -131,33 +127,31 @@ export class GameEl extends LitElement {
     this.got_moves = true;
 
     fetch(`/api/game_moves/${this.game_id}`).then((res) => {
-      res.json().then((data) => {
-        const moves = data.map((m: any) => {
-          return Move.from_json(m);
-        });
-        console.log(moves);
-        this.game = Game.from_moves(moves);
-        console.log("A");
+      res.text().then((data) => {
+        this.game = WasmGame.from_server(data);
         this.drawn_ply = 0;
-        console.log("B");
-        this.drawn_board = this.game.board_at_ply(0);
-        console.log("C");
+        this.drawn_board = this.game.board_at(0);
         this.requestUpdate();
       });
     });
   }
 
   render() {
+    // TODO: Move this to a lifecycle method
     this.get_moves();
 
-    return html`<div class="container">
+    return html` <div class="container">
         <div class="flexrow">
           <board-el
-            .pieces=${new Map(this.drawn_board.pieces())}
+            .pieces=${new Map(
+              this.drawn_board.pieces().map((p) => [p.index, p.piece]),
+            )}
             .legal_moves=${this.player_moves()}
-            .handle_move=${(move: Move) => {
+            .handle_move=${(move: WasmMove) => {
               this.game.make_move(move);
               this.drawn_board = this.game.board();
+              this.drawn_histoy = false;
+              this.drawn_ply = this.game.move_history().length;
               this.handle_game_state_change();
               this.requestUpdate();
 
@@ -165,11 +159,11 @@ export class GameEl extends LitElement {
             }}
           ></board-el>
           <moves-el
-            .moves=${this.game.moves()}
+            .moves=${this.game.move_history()}
             .handle_ply_select=${(idx: number) => {
-              this.drawn_board = this.game.board_at_ply(idx);
+              this.drawn_board = this.game.board_at(idx);
               this.drawn_ply = idx;
-              if (idx == this.game.moves().length) {
+              if (idx == this.game.move_history().length) {
                 this.drawn_histoy = false;
               } else {
                 this.drawn_histoy = true;

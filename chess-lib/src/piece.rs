@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Copy, Debug, tsify::Tsify)]
-#[tsify(from_wasm_abi, into_wasm_abi)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
+#[wasm_bindgen]
 pub enum PieceKind {
     Pawn,
     Knight,
@@ -25,8 +25,7 @@ impl PieceKind {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Copy, Debug, Default)]
-#[serde(rename_all = "lowercase")]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Default, Serialize, Deserialize)]
 #[wasm_bindgen]
 pub enum Color {
     #[default]
@@ -49,7 +48,7 @@ impl Color {
 }
 
 #[wasm_bindgen]
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Piece {
     pub kind: PieceKind,
     pub color: Color,

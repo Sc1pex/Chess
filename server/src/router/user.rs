@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use super::*;
 use crate::{
     auth::get_user,
@@ -10,22 +8,24 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
 };
+use std::collections::HashMap;
 
 pub async fn get(
     cookies: TypedHeader<headers::Cookie>,
     State(state): State<AppState>,
     Path(username): Path<String>,
 ) -> Result<Html<String>, (StatusCode, &'static str)> {
-    let user = sqlx::query_as!(User, "SELECT * FROM users WHERE username = $1", username)
+    let user = sqlx::query_as!(User, "SELECT * FROM users WHERE username = ?", username)
         .fetch_one(&state.pool)
         .await
-        .map_err(|_| (StatusCode::NOT_FOUND, "User not found"))?;
+        .map_err(|_| (StatusCode::NOT_FOUND, "User not found"))?
+        .into();
 
     let stats = get_stats(&user, &state).await;
     let games = sqlx::query!(
         r#"
         SELECT games.id, games.played_at, games.result FROM games 
-        WHERE player = $1 
+        WHERE player = ? 
         ORDER BY games.played_at DESC
         LIMIT 10"#,
         user.id
@@ -72,14 +72,14 @@ fn stats_html(stats: [i64; 3]) -> String {
 
 async fn get_stats(user: &User, state: &AppState) -> [i64; 3] {
     let stats = sqlx::query!(
-        r#"SELECT result, count(result) FROM games WHERE player = $1 GROUP BY result ORDER BY result DESC"#,
+        r#"SELECT result, count(result) as count FROM games WHERE player = ? GROUP BY result ORDER BY result DESC"#,
         user.id
     )
     .fetch_all(&state.pool)
     .await
     .unwrap()
     .into_iter()
-    .map(|row| (row.result, row.count.unwrap()))
+    .map(|row| (row.result, row.count))
     .collect::<HashMap<_, _>>();
 
     [

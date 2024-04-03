@@ -48,7 +48,7 @@ pub async fn post(State(state): State<AppState>, Form(data): Form<LoginForm>) ->
         User,
         r#"
         SELECT * FROM users
-        WHERE username = $1
+        WHERE username = ? 
         "#,
         data.username
     )

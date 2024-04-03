@@ -1,5 +1,5 @@
 use router::AppState;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::mysql::MySqlPoolOptions;
 
 mod auth;
 mod components;
@@ -12,7 +12,7 @@ async fn main() -> anyhow::Result<()> {
     // Ignore errors if .env file is not found
     let _ = dotenvy::dotenv();
 
-    let db = PgPoolOptions::new()
+    let db = MySqlPoolOptions::new()
         .connect(&std::env::var("DATABASE_URL")?)
         .await?;
     sqlx::migrate!().run(&db).await?;

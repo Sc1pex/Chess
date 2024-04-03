@@ -10,7 +10,6 @@ use axum::{
     Json,
 };
 use axum_extra::headers::Cookie;
-use uuid::Uuid;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -22,9 +21,9 @@ pub fn router() -> Router<AppState> {
 
 async fn game_moves(
     State(state): State<AppState>,
-    Path(id): Path<Uuid>,
+    Path(id): Path<i32>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let moves = sqlx::query_scalar!("SELECT moves FROM games WHERE id = $1", id)
+    let moves = sqlx::query_scalar!("SELECT moves FROM games WHERE id = ?", id)
         .fetch_one(&state.pool)
         .await
         .map_err(|_| StatusCode::NOT_FOUND)?;
@@ -35,14 +34,14 @@ async fn game_moves(
 #[derive(serde::Deserialize, Debug)]
 struct UserGamesQuery {
     page: i64,
-    id: Uuid,
+    id: i32,
 }
 
 async fn user_games(
     State(state): State<AppState>,
     Query(UserGamesQuery { page, id }): Query<UserGamesQuery>,
 ) -> Result<Html<String>, StatusCode> {
-    let user = sqlx::query_as!(User, "SELECT * FROM users WHERE id = $1", id)
+    let user = sqlx::query_as!(User, "SELECT * FROM users WHERE id = ?", id)
         .fetch_one(&state.pool)
         .await
         .map_err(|_| StatusCode::NOT_FOUND)?;
@@ -53,10 +52,10 @@ async fn user_games(
     let games = sqlx::query!(
         r#"
         SELECT games.id, games.played_at, games.result FROM games 
-        WHERE player = $1 
+        WHERE player = ? 
         ORDER BY games.played_at DESC
         LIMIT 10
-        OFFSET $2 ROWS"#,
+        OFFSET ?"#,
         user.id,
         (page - 1) * 10
     )
@@ -108,13 +107,15 @@ async fn all_games(
         LEFT JOIN users ON games.player = users.id
         ORDER BY games.played_at DESC
         LIMIT 10
-        OFFSET $1 ROWS
-        "#,
+        OFFSET ?"#,
         (page - 1) * 10
     )
     .fetch_all(&state.pool)
     .await
-    .unwrap();
+    .unwrap()
+    .into_iter()
+    .map(|g| g.into())
+    .collect::<Vec<Game>>();
 
     let next_page = if games.len() < 10 {
         "".to_string()
@@ -143,8 +144,7 @@ async fn submit_game(
     match user {
         Some(id) => {
             sqlx::query!(
-                "INSERT INTO games (id, player, moves, result) VALUES ($1, $2, $3, $4)",
-                uuid::Uuid::new_v4(),
+                "INSERT INTO games (player, moves, result) VALUES (?, ?, ?)",
                 id,
                 data.moves,
                 data.result,
@@ -155,8 +155,7 @@ async fn submit_game(
         }
         None => {
             sqlx::query!(
-                "INSERT INTO games (id, moves, result) VALUES ($1, $2, $3)",
-                uuid::Uuid::new_v4(),
+                "INSERT INTO games (moves, result) VALUES (?, ?)",
                 data.moves,
                 data.result,
             )

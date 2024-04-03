@@ -6,26 +6,33 @@ use crate::{
     piece::{Color, Piece, PieceKind},
     square::Square,
 };
-use serde::{Deserialize, Serialize};
 use std::fmt::Display;
-use wasm_bindgen::prelude::*;
 
 pub mod magic;
 pub mod precalc;
 
-#[wasm_bindgen]
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Move {
-    pub from: Square,
-    pub to: Square,
-    pub piece: Piece,
-    pub capture: bool,
-    pub special: Option<SpecialMove>,
+    pub(crate) from: Square,
+    pub(crate) to: Square,
+    pub(crate) piece: Piece,
+    pub(crate) capture: bool,
+    pub(crate) special: Option<SpecialMove>,
 }
 
-#[wasm_bindgen]
 impl Move {
-    #[wasm_bindgen(constructor)]
+    pub fn empty() -> Self {
+        Self {
+            from: Square::A1,
+            to: Square::A1,
+            piece: Piece::new(PieceKind::Pawn, Color::White),
+            capture: false,
+            special: None,
+        }
+    }
+}
+
+impl Move {
     pub fn new(
         from: Square,
         to: Square,
@@ -42,12 +49,8 @@ impl Move {
         }
     }
 
-    pub fn json(&self) -> String {
-        serde_json::to_string(self).unwrap()
-    }
-
-    pub fn from_json(json: &str) -> Self {
-        serde_json::from_str(json).unwrap()
+    pub fn to_str(&self) -> String {
+        self.to_string()
     }
 }
 
@@ -67,8 +70,7 @@ impl Display for Move {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, tsify::Tsify)]
-#[tsify(from_wasm_abi, into_wasm_abi)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SpecialMove {
     Promotion(PieceKind),
     EnPassant,
@@ -76,7 +78,6 @@ pub enum SpecialMove {
     Castle,
 }
 
-#[wasm_bindgen]
 pub fn legal_moves(board: &Board) -> Box<[Move]> {
     generate_moves(board)
         .into_iter()

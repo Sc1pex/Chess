@@ -5,7 +5,6 @@ use crate::{
     models::Game,
 };
 use axum::extract::{Path, State};
-use uuid::Uuid;
 
 pub async fn get(
     State(state): State<AppState>,
@@ -23,7 +22,10 @@ pub async fn get(
     )
     .fetch_all(&state.pool)
     .await
-    .unwrap();
+    .unwrap()
+    .into_iter()
+    .map(|g| g.into())
+    .collect();
 
     Html(render_index(html! (
         {navbar(get_user(&state.pool, cookies).await)}
@@ -36,7 +38,7 @@ pub async fn get(
 
 pub async fn get_game(
     State(state): State<AppState>,
-    Path(id): Path<Uuid>,
+    Path(id): Path<i32>,
     cookies: TypedHeader<headers::Cookie>,
 ) -> impl IntoResponse {
     Html(render_index(html! (

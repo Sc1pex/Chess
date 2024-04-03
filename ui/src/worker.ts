@@ -1,35 +1,12 @@
-import {
-  Board,
-  Color,
-  PieceKind,
-  SpecialMove,
-  Square,
-  bot_move,
-} from "chess-lib";
+import { WasmBoard, bot_move } from "chess-lib";
 
-type WorkerMove = {
-  from: Square;
-  to: Square;
-  piece: {
-    kind: PieceKind;
-    color: Color;
-  };
-  capture: boolean;
-  special?: SpecialMove;
-};
-
-export function bot_turn(board: any): WorkerMove {
-  let b = Board.from_js_value(board);
-  let m = bot_move(b);
-
-  return {
-    from: m.from,
-    to: m.to,
-    piece: {
-      kind: m.piece.kind,
-      color: m.piece.color,
-    },
-    capture: m.capture,
-    special: m.special,
-  };
+export function bot_turn(
+  board_json: string,
+  ms: bigint = BigInt(3000),
+  max_depth: number = 30,
+  tt_size: number = 10_000_000,
+): string {
+  let b = WasmBoard.from_json(board_json);
+  let m = bot_move(b, max_depth, tt_size, ms);
+  return m.to_json();
 }

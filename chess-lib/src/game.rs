@@ -1,37 +1,23 @@
 use crate::{
     board::Board,
     movegen::{legal_moves, square_attacked, Move},
-    piece::{Color, PieceKind},
+    piece::PieceKind,
+    wasm::GameState,
 };
-use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
 pub struct Game {
-    board: Board,
-    moves: Vec<Move>,
-    board_history: Vec<Board>,
+    pub board: Board,
+    pub moves: Vec<Move>,
+    pub board_history: Vec<Board>,
 
     pub game_state: GameState,
 
     pub fifty_move_rule: u8,
 }
 
-#[wasm_bindgen]
 impl Game {
-    #[wasm_bindgen(constructor)]
-    pub fn new() -> Game {
-        Game {
-            board: Board::start_pos(),
-            moves: Vec::new(),
-            board_history: vec![Board::start_pos()],
-            game_state: GameState::InProgress,
-
-            fifty_move_rule: 0,
-        }
-    }
-
-    pub fn from_fen(fen: &str) -> Game {
-        Game {
+    pub fn from_fen(fen: &str) -> Self {
+        Self {
             board: Board::from_fen(fen),
             moves: Vec::new(),
             board_history: Vec::new(),
@@ -39,14 +25,6 @@ impl Game {
 
             fifty_move_rule: 0,
         }
-    }
-
-    pub fn from_moves(moves: Vec<Move>) -> Game {
-        let mut game = Game::new();
-        for mv in moves {
-            game.make_move(mv);
-        }
-        game
     }
 
     pub fn moves(&self) -> Vec<Move> {
@@ -65,31 +43,21 @@ impl Game {
         self.moves.push(mv);
         self.update_state();
     }
-
-    pub fn board_at_ply(&self, index: usize) -> Board {
-        self.board_history[index].clone()
-    }
-
-    pub fn side_to_move(&self) -> Color {
-        self.board.side_to_move
-    }
-
-    pub fn legal_moves(&self) -> Box<[Move]> {
-        legal_moves(&self.board)
-    }
-
-    pub fn board(&self) -> Board {
-        self.board.clone()
-    }
 }
 
 impl Default for Game {
     fn default() -> Self {
-        Self::new()
+        Self {
+            board: Board::start_pos(),
+            moves: Vec::new(),
+            board_history: vec![Board::start_pos()],
+            game_state: GameState::InProgress,
+
+            fifty_move_rule: 0,
+        }
     }
 }
 
-#[wasm_bindgen]
 impl Game {
     pub fn update_state(&mut self) {
         let moves = legal_moves(&self.board);
@@ -133,16 +101,4 @@ impl Game {
             self.game_state = GameState::DrawByRepetition;
         }
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[wasm_bindgen]
-pub enum GameState {
-    #[default]
-    InProgress,
-    Checkmate,
-    Stalemate,
-    DrawByRepetition,
-    DrawByFiftyMoveRule,
-    DrawByInsufficientMaterial,
 }

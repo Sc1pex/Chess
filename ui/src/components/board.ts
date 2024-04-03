@@ -1,11 +1,4 @@
-import {
-  Color,
-  Move,
-  Piece,
-  PieceKind,
-  square_from_num,
-  square_to_num,
-} from "chess-lib";
+import { Color, Piece, PieceKind, WasmMove } from "chess-lib";
 import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { createRef, ref } from "lit/directives/ref.js";
@@ -14,11 +7,11 @@ import { styleMap } from "lit/directives/style-map.js";
 @customElement("board-el")
 export class BoardEl extends LitElement {
   @property({ type: Array })
-  legal_moves: Array<Move> = [];
+  legal_moves: Array<WasmMove> = [];
   @property({ type: Object })
   pieces: Map<number, Piece> = new Map();
   @property({ type: Object })
-  handle_move: (move: Move) => void = () => {};
+  handle_move: (move: WasmMove) => void = () => {};
 
   board_ref = createRef<HTMLDivElement>();
   piece_hover_ref = createRef<HTMLDivElement>();
@@ -79,12 +72,10 @@ export class BoardEl extends LitElement {
 
   try_move_to(idx: number): boolean {
     const move = this.legal_moves.find(
-      (m) =>
-        m.to == square_from_num(idx) &&
-        m.from == square_from_num(this.selected_idx),
+      (m) => m.to == idx && m.from == this.selected_idx,
     );
     if (move) {
-      if (typeof move.special == "object") {
+      if (move.promotion !== undefined) {
         this.promote_from = this.selected_idx;
         this.promote_to = idx;
         this.show_promotion_menu(idx);
@@ -135,13 +126,9 @@ export class BoardEl extends LitElement {
   highlight_legal_moves(idx: number) {
     const tile_size = this.board_ref.value!.getBoundingClientRect().width / 8;
 
-    const legal_moves = this.legal_moves.filter(
-      (m) => m.from == square_from_num(idx),
-    );
+    const legal_moves = this.legal_moves.filter((m) => m.from == idx);
     for (const m of legal_moves) {
-      const tile = this.shadowRoot!.getElementById(
-        `move-${square_to_num(m.to)}`,
-      );
+      const tile = this.shadowRoot!.getElementById(`move-${m.to}`);
       tile!.style.setProperty("--circle-size", `${tile_size * 0.3}px`);
       if (m.capture) {
         tile!.style.backgroundColor = "rgba(255, 0, 0, 0.5)";
@@ -243,11 +230,7 @@ export class BoardEl extends LitElement {
   tile_mouseenter(_e: MouseEvent, idx: number) {
     if (
       this.selected_idx != -1 &&
-      this.legal_moves.some(
-        (m) =>
-          m.to == square_from_num(idx) &&
-          m.from == square_from_num(this.selected_idx),
-      )
+      this.legal_moves.some((m) => m.to == idx && m.from == this.selected_idx)
     ) {
       this.highlight_tile(idx);
     }
@@ -289,10 +272,9 @@ export class BoardEl extends LitElement {
   handle_promotion(p: PieceKind) {
     const m = this.legal_moves.find(
       (m) =>
-        m.from == square_from_num(this.promote_from) &&
-        m.to == square_from_num(this.promote_to) &&
-        typeof m.special == "object" &&
-        m.special.Promotion == p,
+        m.from == this.promote_from &&
+        m.to == this.promote_to &&
+        m.promotion == p,
     );
     if (m) {
       this.handle_move(m);
@@ -301,9 +283,9 @@ export class BoardEl extends LitElement {
   }
 
   promotion_menu() {
-    const piece_style = (p: PieceKind) =>
+    const piece_style = (p: string) =>
       styleMap({
-        "background-image": `url(/assets/white_${p.toString().toLowerCase()}.svg)`,
+        "background-image": `url(/assets/white_${p}.svg)`,
         "background-size": "contain",
       });
 
@@ -311,34 +293,34 @@ export class BoardEl extends LitElement {
       <div class="promotion-menu" ${ref(this.promotion_menu_ref)}>
         <div
           class="tile"
-          style=${piece_style("Queen")}
+          style=${piece_style("queen")}
           @mousedown=${(e: MouseEvent) => {
             e.stopPropagation();
-            this.handle_promotion("Queen");
+            this.handle_promotion(PieceKind.Queen);
           }}
         ></div>
         <div
           class="tile"
-          style=${piece_style("Rook")}
+          style=${piece_style("rook")}
           @mousedown=${(e: MouseEvent) => {
             e.stopPropagation();
-            this.handle_promotion("Rook");
+            this.handle_promotion(PieceKind.Rook);
           }}
         ></div>
         <div
           class="tile"
-          style=${piece_style("Bishop")}
+          style=${piece_style("bishop")}
           @mousedown=${(e: MouseEvent) => {
             e.stopPropagation();
-            this.handle_promotion("Bishop");
+            this.handle_promotion(PieceKind.Bishop);
           }}
         ></div>
         <div
           class="tile"
-          style=${piece_style("Knight")}
+          style=${piece_style("knight")}
           @mousedown=${(e: MouseEvent) => {
             e.stopPropagation();
-            this.handle_promotion("Knight");
+            this.handle_promotion(PieceKind.Knight);
           }}
         ></div>
       </div>
@@ -413,5 +395,23 @@ declare global {
 }
 
 function piece_asset(p: PieceKind, c: Color): String {
-  return `/assets/${c.toString()}_${p.toString().toLowerCase()}.svg`;
+  const color = c == Color.White ? "white" : "black";
+  const piece = () => {
+    switch (p) {
+      case PieceKind.Pawn:
+        return "pawn";
+      case PieceKind.Knight:
+        return "knight";
+      case PieceKind.Bishop:
+        return "bishop";
+      case PieceKind.Rook:
+        return "rook";
+      case PieceKind.Queen:
+        return "queen";
+      case PieceKind.King:
+        return "king";
+    }
+  };
+
+  return `/assets/${color}_${piece()}.svg`;
 }

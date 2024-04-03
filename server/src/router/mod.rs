@@ -6,10 +6,11 @@ use axum::{
 };
 use axum_extra::{headers, TypedHeader};
 use html_to_string_macro::html;
-use sqlx::{Pool, Postgres};
+use sqlx::{MySql, Pool};
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
 mod api;
+mod debug;
 mod games;
 mod index;
 mod login;
@@ -19,13 +20,14 @@ mod user;
 
 #[derive(Clone)]
 pub struct AppState {
-    pub pool: Pool<Postgres>,
+    pub pool: Pool<MySql>,
 }
 
 pub fn app(state: AppState) -> Router {
     let mut r = Router::new()
         .route("/", get(index::get))
         .route("/new-game", get(new_game::get))
+        .route("/debug", get(debug::get))
         .route("/register", get(register::get))
         .route("/register", post(register::post))
         .route("/login", get(login::get))

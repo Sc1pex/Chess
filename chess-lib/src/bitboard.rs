@@ -1,10 +1,8 @@
 use crate::bitboardindex::BitBoardIdx;
 use serde::{Deserialize, Serialize};
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Neg, Not, Shl, Shr, Sub};
-use wasm_bindgen::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[wasm_bindgen]
 pub struct BitBoard(pub u64);
 
 impl BitBoard {

@@ -56,18 +56,27 @@ pub async fn post(
             .to_string()
     };
 
-    let id = uuid::Uuid::new_v4();
     let q = sqlx::query!(
         r#"
-        INSERT INTO users (username, password, id)
-        VALUES ($1, $2, $3)
+        INSERT INTO users (username, password)
+        VALUES (?, ?)
         "#,
         data.username,
         data.password,
-        id
     )
     .execute(&state.pool)
     .await;
+    let id = sqlx::query!(
+        r#"
+        SELECT id FROM users
+        WHERE username = ?
+        "#,
+        data.username,
+    )
+    .fetch_one(&state.pool)
+    .await
+    .unwrap()
+    .id;
 
     match q {
         Ok(_) => {

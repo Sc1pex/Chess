@@ -1,14 +1,13 @@
-use uuid::Uuid;
-
+#[derive(Debug)]
 pub struct User {
-    pub id: Uuid,
+    pub id: i32,
     pub username: String,
     pub password: String,
 }
 
 #[derive(Debug)]
 pub struct Game {
-    pub id: Uuid,
+    pub id: i32,
     pub played_at: time::OffsetDateTime,
     pub player: Option<String>,
     pub result: String,

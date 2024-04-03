@@ -1,6 +1,6 @@
 #!/bin/bash
 
 cd ../ui/
-bun vite build
+./build.sh
 cd ../server/
 RUST_LOG="trace" cargo run --release
