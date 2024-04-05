@@ -21,7 +21,17 @@ pub async fn get(
     Html(render_index(html! (
         {navbar(user)}
         <div class="content">
-            <a class="newgame" href="/new-game">{new_game_text}</a>
+            <form action="/new-game" class="gameopts">
+                <button class="newgame" type="submit">{new_game_text}</button>
+                <div class="coloropt">
+                    <p style="margin: 0">"Play as:"</p>
+                    <div style="display: flex">
+                        {color_select("white", "checked")}
+                        {color_select("random", "")}
+                        {color_select("black", "")}
+                    </div>
+                </div>
+            </form>
 
             <hr style="width: 80%; margin: 40px 0px;" />
             <h2>"Last 10 games"</h2>
@@ -29,6 +39,18 @@ pub async fn get(
             <a href="/games" style="margin-top: 20px;" class="login">"All games"</a>
         </div>
     )))
+}
+
+fn color_select(color: &str, checked: &str) -> String {
+    html!(
+        <div class="tooltip">
+            <input type="radio" name="color" id=color value=color style="appearance: none" {checked} />
+            <label for=color>
+                <img class="colorselect" src=format!("/assets/select-{}.png", color) />
+            </label>
+            <span class="tooltiptext">{color}</span>
+        </div>
+    )
 }
 
 async fn last_games(state: &AppState) -> String {

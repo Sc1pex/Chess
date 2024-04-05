@@ -24,7 +24,7 @@ pub struct AppState {
 }
 
 pub fn app(state: AppState) -> Router {
-    let mut r = Router::new()
+    Router::new()
         .route("/", get(index::get))
         .route("/new-game", get(new_game::get))
         .route("/debug", get(debug::get))
@@ -35,11 +35,8 @@ pub fn app(state: AppState) -> Router {
         .route("/logout", get(logout))
         .route("/users/:username", get(user::get))
         .route("/games", get(games::get))
-        .route("/games/:id", get(games::get_game));
-    if std::env::var("ENABLE_LIVERELOAD").is_ok() {
-        r = r.layer(tower_livereload::LiveReloadLayer::new());
-    }
-    r.nest("/api", api::router())
+        .route("/games/:id", get(games::get_game))
+        .nest("/api", api::router())
         .with_state(state)
         .nest_service(
             "/assets",

@@ -22,8 +22,5 @@ pub async fn get_user(
     TypedHeader(cookies): TypedHeader<headers::Cookie>,
 ) -> Option<crate::models::User> {
     let id = get_user_id(TypedHeader(cookies))?;
-    tracing::error!("id: {}", id);
-    let x = get_user_by_id(pool, id).await;
-    tracing::error!("x: {:?}", x);
-    x
+    get_user_by_id(pool, id).await
 }
