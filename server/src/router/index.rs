@@ -11,9 +11,8 @@ pub async fn get(
     cookies: TypedHeader<headers::Cookie>,
 ) -> impl IntoResponse {
     let user = get_user(&state.pool, cookies).await;
-
-    let new_game_text = if user.is_some() {
-        "Start new game"
+    let button_text = if user.is_some() {
+        "New game"
     } else {
         "Play as guest"
     };
@@ -21,24 +20,37 @@ pub async fn get(
     Html(render_index(html! (
         {navbar(user)}
         <div class="content">
-            <form action="/new-game" class="gameopts">
-                <button class="newgame" type="submit">{new_game_text}</button>
-                <div class="coloropt">
-                    <p style="margin: 0">"Play as:"</p>
-                    <div style="display: flex">
-                        {color_select("white", "checked")}
-                        {color_select("random", "")}
-                        {color_select("black", "")}
-                    </div>
-                </div>
-            </form>
-
+            {new_game(button_text)}
             <hr style="width: 80%; margin: 40px 0px;" />
             <h2>"Last 10 games"</h2>
             {last_games(&state).await}
             <a href="/games" style="margin-top: 20px;" class="login">"All games"</a>
         </div>
     )))
+}
+
+fn new_game(button_text: &str) -> String {
+    html!(
+        <form action="/new-game" class="gameopts">
+            <button class="newgame" type="submit">{button_text}</button>
+            <div class="coloropt">
+                <p style="margin: 0">"Play with:"</p>
+                <div style="display: flex">
+                    {color_select("white", "checked")}
+                    {color_select("random", "")}
+                    {color_select("black", "")}
+                </div>
+            </div>
+            <div class="divopt">
+                <p style="margin: 0">"Difficulty:"</p>
+                <select name="difficulty" class="difficulty">
+                    <option value="0">"Easier"</option>
+                    <option value="1">"Harder"</option>
+                    <option value="2">"Hardest"</option>
+                </select>
+            </div>
+        </form>
+    )
 }
 
 fn color_select(color: &str, checked: &str) -> String {

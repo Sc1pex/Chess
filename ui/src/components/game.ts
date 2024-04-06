@@ -5,31 +5,44 @@ import {
   WasmGame,
   WasmMove,
   opposite_color,
-  BotMove,
 } from "chess-lib";
 import { LitElement, css, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { createRef, ref } from "lit/directives/ref.js";
+import { Difficulty } from "../worker";
 
 const bot_worker = new ComlinkWorker<typeof import("../worker")>(
   new URL("../worker.ts", import.meta.url),
 );
 
-async function run_worker(board: WasmBoard): Promise<WasmMove> {
+function difficulty(level: number): Difficulty {
+  if (level == 1) {
+    return { depth: 3, ms: 500n, tt_size: 10000000, worse_move_chance: 0.5 };
+  } else if (level == 2) {
+    return { depth: 10, ms: 1000n, tt_size: 10000000, worse_move_chance: 0.2 };
+  }
+  return { depth: 30, ms: 3000n, tt_size: 10000000, worse_move_chance: 0.05 };
+}
+
+async function run_worker(board: WasmBoard, diff: number): Promise<WasmMove> {
   const board_json = board.to_json();
-  const m = await bot_worker.bot_turn(board_json);
-  const bot_move = BotMove.from_json(m);
-  console.log("Reached depth:", bot_move.depth);
-  return bot_move.m;
+  const m = await bot_worker.bot_turn(board_json, difficulty(diff));
+  return WasmMove.from_json(m);
 }
 
 @customElement("game-el")
 export class GameEl extends LitElement {
   @state()
   game: WasmGame = new WasmGame();
+
   @property()
   game_id: string = "";
-  got_moves: boolean = false;
+  ran_setup: boolean = false;
+
+  @property()
+  player_color: string = "white";
+  @property({ type: Number })
+  difficulty: number = 1;
 
   drawn_board: WasmBoard = new WasmBoard();
   drawn_histoy: boolean = false;
@@ -38,6 +51,12 @@ export class GameEl extends LitElement {
   constructor() {
     super();
     this.drawn_board = this.game.board();
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+
+    this.bot_color = this.player_color == "white" ? Color.Black : Color.White;
   }
 
   bot_color: Color = Color.Black;
@@ -52,7 +71,7 @@ export class GameEl extends LitElement {
   bot_turn() {
     if (this.game.game_state() != GameState.InProgress) return;
 
-    run_worker(this.game.board()).then((m) => {
+    run_worker(this.game.board(), this.difficulty).then((m) => {
       this.game.make_move(m);
       this.drawn_board = this.game.board();
       this.drawn_histoy = false;
@@ -99,7 +118,6 @@ export class GameEl extends LitElement {
         result = "Loss";
       }
     }
-    console.log(result);
 
     fetch("/api/submit_game", {
       method: "POST",
@@ -107,8 +125,8 @@ export class GameEl extends LitElement {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        moves: this.game.moves_server(),
         result: result,
+        moves: this.game.moves_server(),
       }),
     });
   }
@@ -122,23 +140,30 @@ export class GameEl extends LitElement {
     this.requestUpdate();
   }
 
-  get_moves() {
-    if (this.got_moves || this.game_id.length == 0) return;
-    this.got_moves = true;
+  setup() {
+    if (this.ran_setup) return;
+    this.ran_setup = true;
 
-    fetch(`/api/game_moves/${this.game_id}`).then((res) => {
-      res.text().then((data) => {
-        this.game = WasmGame.from_server(data);
-        this.drawn_ply = 0;
-        this.drawn_board = this.game.board_at(0);
-        this.requestUpdate();
+    if (this.bot_color == Color.White) {
+      setTimeout(() => {
+        this.bot_turn();
+      }, 1000);
+    }
+
+    if (this.game_id !== "") {
+      fetch(`/api/game_moves/${this.game_id}`).then((res) => {
+        res.text().then((data) => {
+          this.game = WasmGame.from_server(data);
+          this.drawn_ply = 0;
+          this.drawn_board = this.game.board_at(0);
+          this.requestUpdate();
+        });
       });
-    });
+    }
   }
 
   render() {
-    // TODO: Move this to a lifecycle method
-    this.get_moves();
+    this.setup();
 
     return html` <div class="container">
         <div class="flexrow">
@@ -157,6 +182,7 @@ export class GameEl extends LitElement {
 
               this.bot_turn();
             }}
+            .flip=${this.player_color == "white"}
           ></board-el>
           <moves-el
             .moves=${this.game.move_history()}

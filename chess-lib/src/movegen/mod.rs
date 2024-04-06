@@ -6,12 +6,13 @@ use crate::{
     piece::{Color, Piece, PieceKind},
     square::Square,
 };
+use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
 pub mod magic;
 pub mod precalc;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Move {
     pub(crate) from: Square,
     pub(crate) to: Square,
@@ -70,7 +71,7 @@ impl Display for Move {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum SpecialMove {
     Promotion(PieceKind),
     EnPassant,

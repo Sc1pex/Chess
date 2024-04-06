@@ -1,7 +1,7 @@
-use super::*;
 use crate::{
     bitboardindex::BitBoardIdx,
-    movegen::{legal_moves, SpecialMove},
+    board::Board,
+    movegen::{legal_moves, Move, SpecialMove},
     piece::{Color, Piece, PieceKind},
     square::Square,
     transposition::{TranspositionKind, TranspositionTable},
@@ -33,20 +33,6 @@ impl Bot {
     }
 }
 
-impl BotTrait for Bot {
-    fn make_move(&mut self, board: Board) -> Move {
-        self.start = Instant::now();
-        for depth in 1..=self.depth {
-            self.search(board.clone(), -500_000, 500_000, depth, 0, true);
-            self.reached_depth = depth;
-            if self.should_stop {
-                break;
-            }
-        }
-        self.pv_table[0][0]
-    }
-}
-
 impl Bot {
     pub fn new(depth: i32, tt_entries: usize, ms: u64) -> Self {
         let pv_table_size = 128;
@@ -72,6 +58,20 @@ impl Bot {
             tt_hits: 0,
             reached_depth: 0,
         }
+    }
+
+    pub fn make_move(&mut self, board: Board) -> Box<[Move]> {
+        let mut moves = vec![];
+        self.start = Instant::now();
+        for depth in 1..=self.depth {
+            self.search(board.clone(), -500_000, 500_000, depth, 0, true);
+            self.reached_depth = depth;
+            if self.should_stop {
+                break;
+            }
+            moves.push(self.pv_table[0][0]);
+        }
+        moves.into()
     }
 }
 

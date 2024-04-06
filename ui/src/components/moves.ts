@@ -207,7 +207,7 @@ function move_to_str(m: WasmMove): string {
   if (m.piece == PieceKind.Pawn) {
     let move = "";
     if (m.capture) {
-      move = `${idx_to_square(m.from)}x${idx_to_square(m.to)}`.toLowerCase();
+      move = `${idx_to_square(m.from)[0]}x${idx_to_square(m.to)}`.toLowerCase();
     } else {
       move = `${idx_to_square(m.to)}`.toLowerCase();
     }

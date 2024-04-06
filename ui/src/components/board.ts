@@ -12,6 +12,8 @@ export class BoardEl extends LitElement {
   pieces: Map<number, Piece> = new Map();
   @property({ type: Object })
   handle_move: (move: WasmMove) => void = () => {};
+  @property({ type: Boolean })
+  flip: boolean = true;
 
   board_ref = createRef<HTMLDivElement>();
   piece_hover_ref = createRef<HTMLDivElement>();
@@ -32,7 +34,9 @@ export class BoardEl extends LitElement {
     const y = e.clientY - board_rect.top;
 
     const tile_x = Math.floor(x / tile_size);
-    const tile_y = 7 - Math.floor(y / tile_size);
+    const tile_y = this.flip
+      ? 7 - Math.floor(y / tile_size)
+      : Math.floor(y / tile_size);
 
     if (tile_x < 0 || tile_x > 7 || tile_y < 0 || tile_y > 7) return null;
     return tile_x + tile_y * 8;
@@ -244,7 +248,7 @@ export class BoardEl extends LitElement {
 
   board_tile(i: number) {
     const x = i % 8;
-    const y = 7 - Math.floor(i / 8);
+    const y = this.flip ? 7 - Math.floor(i / 8) : Math.floor(i / 8);
     const color = (x + y) % 2 == 0 ? "black" : "white";
     const idx = x + y * 8;
 

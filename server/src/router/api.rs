@@ -140,6 +140,7 @@ async fn submit_game(
     Json(data): Json<GameDataJson>,
 ) {
     let user = get_user_id(cookies);
+    tracing::error!("Submitting game: {:?}", data);
 
     match user {
         Some(id) => {

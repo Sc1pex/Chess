@@ -17,14 +17,17 @@ pub struct Game {
 
 impl Game {
     pub fn from_fen(fen: &str) -> Self {
-        Self {
-            board: Board::from_fen(fen),
-            moves: Vec::new(),
-            board_history: Vec::new(),
-            game_state: GameState::InProgress,
+        let mut g = Game::default();
+        g.board = Board::from_fen(fen);
+        g
+    }
 
-            fifty_move_rule: 0,
+    pub fn from_moves(moves: Vec<Move>) -> Game {
+        let mut game = Game::default();
+        for mv in moves {
+            game.make_move(mv);
         }
+        game
     }
 
     pub fn moves(&self) -> Vec<Move> {

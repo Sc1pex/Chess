@@ -1,14 +1,13 @@
-use std::fmt::Display;
-
 use crate::{
     board::Board,
-    bot::{v1, BotTrait},
+    bot::Bot,
     console_log,
     game::Game,
     movegen::{legal_moves, Move, SpecialMove},
     piece::Piece,
 };
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -21,6 +20,17 @@ pub struct WasmMove {
 
     pub promotion: Option<crate::piece::PieceKind>,
     pub castle: Option<CastleMove>,
+}
+
+#[wasm_bindgen]
+impl WasmMove {
+    pub fn to_json(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
+
+    pub fn from_json(json: String) -> Self {
+        serde_json::from_str(&json).unwrap()
+    }
 }
 
 impl Display for WasmMove {
@@ -89,8 +99,12 @@ impl WasmGame {
         Self(Game::default())
     }
 
-    pub fn from_server(_move_json: String) -> Self {
-        todo!()
+    pub fn from_server(move_json: String) -> Self {
+        console_error_panic_hook::set_once();
+
+        let move_json: String = serde_json::from_str(&move_json).unwrap();
+        let moves: Vec<Move> = serde_json::from_str(&move_json).unwrap();
+        Self(Game::from_moves(moves))
     }
 
     pub fn board(&self) -> WasmBoard {
@@ -132,7 +146,7 @@ impl WasmGame {
     }
 
     pub fn moves_server(&self) -> String {
-        String::new()
+        serde_json::to_string(&self.0.moves()).unwrap()
     }
 
     pub fn board_at(&self, ply: usize) -> WasmBoard {
@@ -189,12 +203,11 @@ pub struct PieceWithIndex {
 #[derive(Clone, Serialize, Deserialize)]
 #[wasm_bindgen]
 pub struct BotMove {
-    pub m: WasmMove,
     pub nodes_searched: u64,
-    pub seconds: f64,
     pub score: i32,
     pub depth: i32,
 
+    moves: Box<[WasmMove]>,
     pv: Box<[WasmMove]>,
 }
 
@@ -208,12 +221,8 @@ impl BotMove {
             .join(" ")
     }
 
-    pub fn to_json(&self) -> String {
-        serde_json::to_string(self).unwrap()
-    }
-
-    pub fn from_json(json: String) -> Self {
-        serde_json::from_str(&json).unwrap()
+    pub fn best_move_at_depth(&self, depth: usize) -> WasmMove {
+        self.moves[depth]
     }
 }
 
@@ -221,15 +230,13 @@ impl BotMove {
 pub fn bot_move(board: WasmBoard, depth: i32, tt_size: usize, max_time: u64) -> BotMove {
     console_error_panic_hook::set_once();
 
-    let mut bot = v1::Bot::new(depth, tt_size, max_time);
-    let start = js_sys::Date::now();
+    let mut bot = Bot::new(depth, tt_size, max_time);
     let m = bot.make_move(board.0);
-    let seconds = (js_sys::Date::now() - start) / 1000.0;
+    let m = m.iter().map(Into::into).collect();
 
     BotMove {
-        m: m.into(),
+        moves: m,
         nodes_searched: bot.nodes_searched,
-        seconds,
         score: bot.score,
         depth: bot.reached_depth,
 
