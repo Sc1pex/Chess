@@ -33,7 +33,9 @@ export class BoardEl extends LitElement {
     const x = e.clientX - board_rect.left;
     const y = e.clientY - board_rect.top;
 
-    const tile_x = Math.floor(x / tile_size);
+    const tile_x = this.flip
+      ? Math.floor(x / tile_size)
+      : 7 - Math.floor(x / tile_size);
     const tile_y = this.flip
       ? 7 - Math.floor(y / tile_size)
       : Math.floor(y / tile_size);
@@ -247,9 +249,9 @@ export class BoardEl extends LitElement {
   }
 
   board_tile(i: number) {
-    const x = i % 8;
+    const x = this.flip ? i % 8 : 7 - (i % 8);
     const y = this.flip ? 7 - Math.floor(i / 8) : Math.floor(i / 8);
-    const color = (x + (7 - Math.floor(i / 8))) % 2 == 0 ? "black" : "white";
+    const color = (x + y) % 2 == 0 ? "black" : "white";
     const idx = x + y * 8;
 
     let piece_style = styleMap({});
