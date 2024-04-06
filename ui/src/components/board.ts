@@ -249,7 +249,7 @@ export class BoardEl extends LitElement {
   board_tile(i: number) {
     const x = i % 8;
     const y = this.flip ? 7 - Math.floor(i / 8) : Math.floor(i / 8);
-    const color = (x + y) % 2 == 0 ? "black" : "white";
+    const color = (x + (7 - Math.floor(i / 8))) % 2 == 0 ? "black" : "white";
     const idx = x + y * 8;
 
     let piece_style = styleMap({});
