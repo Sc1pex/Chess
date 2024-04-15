@@ -34,7 +34,7 @@ fn new_game(button_text: &str) -> String {
         <form action="/new-game" class="gameopts">
             <button class="newgame" type="submit">{button_text}</button>
             <div class="coloropt">
-                <p style="margin: 0">"Play with:"</p>
+                <p style="margin: 0">"Color:"</p>
                 <div style="display: flex">
                     {color_select("white", "checked")}
                     {color_select("random", "")}
@@ -44,9 +44,9 @@ fn new_game(button_text: &str) -> String {
             <div class="divopt">
                 <p style="margin: 0">"Difficulty:"</p>
                 <select name="difficulty" class="difficulty">
-                    <option value="0">"Easier"</option>
-                    <option value="1">"Harder"</option>
-                    <option value="2">"Hardest"</option>
+                    <option value="0">"Easy"</option>
+                    <option value="1">"Medium"</option>
+                    <option value="2">"Hard"</option>
                 </select>
             </div>
         </form>
@@ -69,7 +69,7 @@ async fn last_games(state: &AppState) -> String {
     let games = sqlx::query_as!(
         Game,
         r#"
-        SELECT games.id, games.played_at, games.result, users.username as "player?"
+        SELECT games.id, games.played_at, games.result, games.difficulty, users.username as "player?"
         FROM games
         LEFT JOIN users ON games.player = users.id
         ORDER BY games.played_at DESC

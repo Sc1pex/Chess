@@ -156,6 +156,7 @@ td {
 .coloropt input:checked+label>.colorselect {
   border: 2px solid #0ea5e9;
   border-radius: 5px;
+  box-sizing: border-box;
 }
 
 .colorselect {

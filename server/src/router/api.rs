@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    auth::get_user_id,
+    auth::get_user_token,
     components::game_html,
     models::{Game, User},
 };
@@ -51,7 +51,7 @@ async fn user_games(
     }
     let games = sqlx::query!(
         r#"
-        SELECT games.id, games.played_at, games.result FROM games 
+        SELECT games.id, games.played_at, games.result, games.difficulty FROM games 
         WHERE player = ? 
         ORDER BY games.played_at DESC
         LIMIT 10
@@ -68,6 +68,7 @@ async fn user_games(
         played_at: row.played_at,
         player: Some(user.username.clone()),
         result: row.result,
+        difficulty: row.difficulty,
     })
     .collect::<Vec<_>>();
 
@@ -102,7 +103,7 @@ async fn all_games(
     let games = sqlx::query_as!(
         Game,
         r#"
-        SELECT games.id, games.played_at, games.result, users.username as "player?"
+        SELECT games.id, games.played_at, games.result, games.difficulty, users.username as "player?"
         FROM games
         LEFT JOIN users ON games.player = users.id
         ORDER BY games.played_at DESC
@@ -139,16 +140,23 @@ async fn submit_game(
     cookies: TypedHeader<Cookie>,
     Json(data): Json<GameDataJson>,
 ) {
-    let user = get_user_id(cookies);
+    let user = get_user_token(cookies);
     tracing::error!("Submitting game: {:?}", data);
+    let difficulty = match data.difficulty {
+        0 => "Easy",
+        1 => "Medium",
+        2 => "Hard",
+        _ => "-",
+    };
 
     match user {
         Some(id) => {
             sqlx::query!(
-                "INSERT INTO games (player, moves, result) VALUES (?, ?, ?)",
+                "INSERT INTO games (player, moves, result, difficulty) VALUES (?, ?, ?, ?)",
                 id,
                 data.moves,
                 data.result,
+                difficulty
             )
             .execute(&state.pool)
             .await
@@ -156,9 +164,10 @@ async fn submit_game(
         }
         None => {
             sqlx::query!(
-                "INSERT INTO games (moves, result) VALUES (?, ?)",
+                "INSERT INTO games (moves, result, difficulty) VALUES (?, ?, ?)",
                 data.moves,
                 data.result,
+                difficulty
             )
             .execute(&state.pool)
             .await
@@ -171,4 +180,5 @@ async fn submit_game(
 pub struct GameDataJson {
     moves: serde_json::Value,
     result: String,
+    difficulty: i32,
 }

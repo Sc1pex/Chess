@@ -39,7 +39,7 @@ pub async fn get(
 
     Html(render_index(html! (
         {navbar(user)}
-        <game-el player_color=color difficuly={difficulty}></game-el>
+        <game-el player_color=color difficulty={difficulty}></game-el>
     )))
     .into_response()
 }

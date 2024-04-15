@@ -1,3 +1,5 @@
+use crate::auth::update_token;
+
 use super::*;
 use argon2::{
     password_hash::{rand_core::OsRng, SaltString},
@@ -77,12 +79,13 @@ pub async fn post(
     .await
     .unwrap()
     .id;
+    let token = update_token(&state.pool, id).await.unwrap();
 
     match q {
         Ok(_) => {
-            let cookie = Cookie::build(("SESSION", id.to_string()))
+            let cookie = Cookie::build(("SESSION", token.to_string()))
                 .path("/")
-                .max_age(Duration::days(30))
+                .max_age(Duration::days(2))
                 .build();
             let mut headers = HeaderMap::new();
             headers.insert(SET_COOKIE, cookie.to_string().parse().unwrap());

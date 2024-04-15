@@ -24,7 +24,7 @@ pub async fn get(
     let stats = get_stats(&user, &state).await;
     let games = sqlx::query!(
         r#"
-        SELECT games.id, games.played_at, games.result FROM games 
+        SELECT games.id, games.played_at, games.result, games.difficulty FROM games 
         WHERE player = ? 
         ORDER BY games.played_at DESC
         LIMIT 10"#,
@@ -39,6 +39,7 @@ pub async fn get(
         played_at: row.played_at,
         player: Some(user.username.clone()),
         result: row.result,
+        difficulty: row.difficulty,
     })
     .collect::<Vec<_>>();
 

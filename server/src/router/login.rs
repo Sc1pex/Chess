@@ -1,4 +1,4 @@
-use crate::models::User;
+use crate::{auth::update_token, models::User};
 
 use super::*;
 use argon2::{Argon2, PasswordHash, PasswordVerifier};
@@ -64,9 +64,14 @@ pub async fn post(State(state): State<AppState>, Form(data): Form<LoginForm>) ->
                 )
                 .is_ok();
             if password {
-                let cookie = Cookie::build(("SESSION", user.id.to_string()))
+                let mut token = user.token;
+                if token.is_none() {
+                    token = update_token(&state.pool, user.id).await;
+                }
+
+                let cookie = Cookie::build(("SESSION", token.unwrap().to_string()))
                     .path("/")
-                    .max_age(Duration::days(30))
+                    .max_age(Duration::days(2))
                     .build();
                 let mut headers = HeaderMap::new();
                 headers.insert(SET_COOKIE, cookie.to_string().parse().unwrap());

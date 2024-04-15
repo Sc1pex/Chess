@@ -6,6 +6,7 @@ use crate::{
     movegen::{legal_moves, Move, SpecialMove},
     piece::Piece,
 };
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use wasm_bindgen::prelude::*;
@@ -206,45 +207,114 @@ pub struct BotMove {
     pub nodes_searched: u64,
     pub score: i32,
     pub depth: i32,
-
-    moves: Box<[WasmMove]>,
-    pv: Box<[WasmMove]>,
+    pub best_move: WasmMove,
 }
 
 #[wasm_bindgen]
-impl BotMove {
-    pub fn pv(&self) -> String {
-        self.pv
-            .into_iter()
-            .map(|m| m.to_string())
-            .collect::<Vec<_>>()
-            .join(" ")
-    }
-
-    pub fn best_move_at_depth(&self, depth: usize) -> WasmMove {
-        self.moves[depth]
-    }
+#[derive(PartialEq, Debug)]
+pub enum Difficulty {
+    Easy,
+    Medium,
+    Hard,
 }
 
 #[wasm_bindgen]
-pub fn bot_move(board: WasmBoard, depth: i32, tt_size: usize, max_time: u64) -> BotMove {
+pub fn bot_move(board: WasmBoard, difficulty: Difficulty) -> BotMove {
     console_error_panic_hook::set_once();
 
+    let (depth, tt_size, max_time) = match difficulty {
+        Difficulty::Easy => (5, 10000000, 3000),
+        Difficulty::Medium => (7, 10000000, 3000),
+        Difficulty::Hard => (30, 10000000, 3000),
+    };
+
     let mut bot = Bot::new(depth, tt_size, max_time);
-    let m = bot.make_move(board.0);
-    let m = m.iter().map(Into::into).collect();
+    let m = bot.make_move(board.0, difficulty == Difficulty::Hard);
 
     BotMove {
-        moves: m,
+        best_move: select_move(m, difficulty),
         nodes_searched: bot.nodes_searched,
         score: bot.score,
         depth: bot.reached_depth,
+    }
+}
 
-        pv: bot.pv_table[0]
-            .into_iter()
-            .take(bot.pv_len[0] - 1)
-            .cloned()
-            .map(Into::into)
-            .collect(),
+fn select_move(moves: Box<[(Move, i32)]>, difficulty: Difficulty) -> WasmMove {
+    match difficulty {
+        Difficulty::Easy => {
+            if moves[0].1 >= 400_000 {
+                return moves[0].0.into();
+            }
+
+            let score_brackets = [50, 100, 200, 500, 2000];
+            let probabilites = [0.35, 0.25, 0.2, 0.15, 0.05];
+
+            let moves_per_bracked: Vec<_> = score_brackets
+                .iter()
+                .map(|b| {
+                    moves
+                        .iter()
+                        .filter(|(_, s)| moves[0].1 - *s <= *b)
+                        .collect::<Vec<_>>()
+                })
+                .collect();
+
+            loop {
+                let mut r: f64 = rand::thread_rng().gen();
+                console_log!("Generated {r}");
+                let mut bracket = 0;
+                for i in 0..probabilites.len() {
+                    r -= probabilites[i];
+                    bracket = i;
+                    if r <= 0. {
+                        break;
+                    }
+                }
+                console_log!("Bracket {bracket} - {}", score_brackets[bracket]);
+
+                if !moves_per_bracked[bracket].is_empty() {
+                    let idx = rand::thread_rng().gen_range(0..moves_per_bracked[bracket].len());
+                    return moves[idx].0.into();
+                }
+            }
+        }
+        Difficulty::Medium => {
+            if moves[0].1 >= 400_000 {
+                return moves[0].0.into();
+            }
+
+            let score_brackets = [20, 50, 100, 200, 400];
+            let probabilites = [0.5, 0.3, 0.1, 0.08, 0.02];
+
+            let moves_per_bracked: Vec<_> = score_brackets
+                .iter()
+                .map(|b| {
+                    moves
+                        .iter()
+                        .filter(|(_, s)| moves[0].1 - *s <= *b)
+                        .collect::<Vec<_>>()
+                })
+                .collect();
+
+            loop {
+                let mut r: f64 = rand::thread_rng().gen();
+                console_log!("Generated {r}");
+                let mut bracket = 0;
+                for i in 0..probabilites.len() {
+                    r -= probabilites[i];
+                    bracket = i;
+                    if r <= 0. {
+                        break;
+                    }
+                }
+                console_log!("Bracket {bracket} - {}", score_brackets[bracket]);
+
+                if !moves_per_bracked[bracket].is_empty() {
+                    let idx = rand::thread_rng().gen_range(0..moves_per_bracked[bracket].len());
+                    return moves[idx].0.into();
+                }
+            }
+        }
+        Difficulty::Hard => moves[0].0.into(),
     }
 }

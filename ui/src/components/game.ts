@@ -5,23 +5,24 @@ import {
   WasmGame,
   WasmMove,
   opposite_color,
+  Difficulty,
 } from "chess-lib";
 import { LitElement, css, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { createRef, ref } from "lit/directives/ref.js";
-import { Difficulty } from "../worker";
 
 const bot_worker = new ComlinkWorker<typeof import("../worker")>(
   new URL("../worker.ts", import.meta.url),
 );
 
-function difficulty(level: number): Difficulty {
-  if (level == 1) {
-    return { depth: 3, ms: 500n, tt_size: 10000000, worse_move_chance: 0.5 };
-  } else if (level == 2) {
-    return { depth: 10, ms: 1000n, tt_size: 10000000, worse_move_chance: 0.2 };
+function difficulty(d: number) {
+  if (d == 0) {
+    return Difficulty.Easy;
+  } else if (d == 1) {
+    return Difficulty.Medium;
+  } else {
+    return Difficulty.Hard;
   }
-  return { depth: 30, ms: 3000n, tt_size: 10000000, worse_move_chance: 0.05 };
 }
 
 async function run_worker(board: WasmBoard, diff: number): Promise<WasmMove> {
@@ -42,7 +43,7 @@ export class GameEl extends LitElement {
   @property()
   player_color: string = "white";
   @property({ type: Number })
-  difficulty: number = 1;
+  difficulty: number = 0;
 
   drawn_board: WasmBoard = new WasmBoard();
   drawn_histoy: boolean = false;
@@ -127,6 +128,7 @@ export class GameEl extends LitElement {
       body: JSON.stringify({
         result: result,
         moves: this.game.moves_server(),
+        difficulty: this.difficulty,
       }),
     });
   }
@@ -147,7 +149,7 @@ export class GameEl extends LitElement {
     if (this.bot_color == Color.White) {
       setTimeout(() => {
         this.bot_turn();
-      }, 1000);
+      }, 2000);
     }
 
     if (this.game_id !== "") {

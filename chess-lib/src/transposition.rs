@@ -5,7 +5,7 @@ struct Transposition {
     depth: i32,
     score: i32,
     kind: TranspositionKind,
-    best_move: Move,
+    _best_move: Move,
 }
 
 pub enum TranspositionKind {
@@ -21,6 +21,10 @@ pub struct TranspositionTable {
 }
 
 impl TranspositionTable {
+    pub fn size(&self) -> usize {
+        self.table.len()
+    }
+
     pub fn new(entries: usize) -> Self {
         let table = (0..entries)
             .map(|_| Transposition {
@@ -28,7 +32,7 @@ impl TranspositionTable {
                 depth: 0,
                 score: 0,
                 kind: TranspositionKind::Exact,
-                best_move: Move::empty(),
+                _best_move: Move::empty(),
             })
             .collect();
 
@@ -81,7 +85,7 @@ impl TranspositionTable {
             depth,
             score,
             kind,
-            best_move,
+            _best_move: best_move,
         };
     }
 }

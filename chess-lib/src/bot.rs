@@ -1,6 +1,7 @@
 use crate::{
     bitboardindex::BitBoardIdx,
     board::Board,
+    console_log,
     movegen::{legal_moves, Move, SpecialMove},
     piece::{Color, Piece, PieceKind},
     square::Square,
@@ -60,18 +61,42 @@ impl Bot {
         }
     }
 
-    pub fn make_move(&mut self, board: Board) -> Box<[Move]> {
-        let mut moves = vec![];
-        self.start = Instant::now();
-        for depth in 1..=self.depth {
-            self.search(board.clone(), -500_000, 500_000, depth, 0, true);
-            self.reached_depth = depth;
-            if self.should_stop {
-                break;
+    pub fn make_move(&mut self, board: Board, hard_diff: bool) -> Box<[(Move, i32)]> {
+        if hard_diff {
+            let mut moves = vec![];
+            self.start = Instant::now();
+            for depth in 1..=self.depth {
+                let s = self.search(board.clone(), -500_000, 500_000, depth, 0, true);
+                self.reached_depth = depth;
+                if self.should_stop {
+                    break;
+                }
+                moves = vec![(self.pv_table[0][0], s)];
             }
-            moves.push(self.pv_table[0][0]);
+            moves.into()
+        } else {
+            let mut moves = vec![];
+            for depth in 1..=self.depth {
+                let mut new_moves = vec![];
+                let m = legal_moves(&board);
+                for m in m.iter() {
+                    let mut board = board.clone();
+
+                    board.make_move(m);
+                    let score = -self.search(board, -500_000, 500_000, depth, 1, true);
+
+                    new_moves.push((m.clone(), score));
+                }
+
+                self.reached_depth = depth;
+                if self.should_stop {
+                    break;
+                }
+                moves = new_moves;
+            }
+            moves.sort_by(|a, b| b.1.cmp(&a.1));
+            moves.into()
         }
-        moves.into()
     }
 }
 

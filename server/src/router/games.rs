@@ -13,7 +13,7 @@ pub async fn get(
     let games = sqlx::query_as!(
         Game,
         r#"
-        SELECT games.id, games.played_at, games.result, users.username as "player?"
+        SELECT games.id, games.played_at, games.result, games.difficulty, users.username as "player?"
         FROM games
         LEFT JOIN users ON games.player = users.id
         ORDER BY games.played_at DESC

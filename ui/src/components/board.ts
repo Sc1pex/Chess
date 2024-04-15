@@ -48,8 +48,11 @@ export class BoardEl extends LitElement {
     const board_rect = this.board_ref.value?.getBoundingClientRect();
     const tile_size = board_rect!.width / 8;
 
-    const left = board_rect!.left + (idx % 8) * tile_size;
-    const top = board_rect!.top + (7 - Math.floor(idx / 8)) * tile_size;
+    const x = this.flip ? idx % 8 : 7 - (idx % 8);
+    const y = this.flip ? 7 - Math.floor(idx / 8) : Math.floor(idx / 8);
+
+    const left = board_rect!.left + x * tile_size;
+    const top = board_rect!.top + y * tile_size;
 
     const menu = this.promotion_menu_ref.value!;
     menu.style.left = `${left}px`;
@@ -291,7 +294,7 @@ export class BoardEl extends LitElement {
   promotion_menu() {
     const piece_style = (p: string) =>
       styleMap({
-        "background-image": `url(/assets/white_${p}.svg)`,
+        "background-image": `url(/assets/${this.flip ? "white" : "black"}_${p}.svg)`,
         "background-size": "contain",
       });
 
