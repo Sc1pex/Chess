@@ -1,0 +1,35 @@
+\vspace{1cm}
+\subsubsection{Generarea mutărilor legale}
+\vspace{1cm}
+
+Generarea mutărilor este o parte esențială, deci trebuie să fie cât mai rapidă,
+astfel pentru fiecare tip de piesă și fiecare pătrat se precalculează un tabel
+care conține un \textit{BitBoard} cu valori de 1 în pătratele care sunt atacate
+de fiecare piesă pe pătratul respectiv.
+\vspace{0.2cm}
+
+Această metodă funcționează pentru pioni, cai și regi dar nu și pentru ture, nebuni și
+regine deoarece ele pot fi blocate de alte piese. Se observă că regina funcționează ca
+o tură combinată cu un nebun, deci nu avem nevoie să generăm nimic în plus.
+\vspace{0.2cm}
+
+Pentru ture și nebuni se folosește o metodă numită \textit{Magic BitBoards} care constă în generarea
+unui \textit{BitBoard} pentru fiecare aranjament piese care pot bloca piesa pentru care
+generăm. La prima vedere pare o metodă ineficientă, dar tura atacă 14 pătrate pe o tablă goală
+iar nebunul maxim 13. Aceste numere se pot reduce la 12, respectiv 9 observând că pătratele
+de la marginea tablei nu schimbă \textit{BitBoardul} generat indiferent de starea de ocupație,
+ceea ce înseamnă că pentru fiecare pătrat trebuie să generăm ${2^{12} + 2^9 = 4608}$ de numere,
+un număr foarte mic.
+
+Rezultatele generării sunt memorate într-o structură numită \textit{Precalc}:
+\begin{lstlisting}[language=RustHtml]
+pub struct Precalc {
+    pub bishop_magic: Box<[[BitBoard; 512]; 64]>,
+    pub rook_magic: Box<[[BitBoard; 4096]; 64]>,
+    pub bishop: Box<[(BitBoard, u32); 64]>,
+    pub rook: Box<[(BitBoard, u32); 64]>,
+    pub pawns: Box<[[BitBoard; 2]; 64]>,
+    pub knight: Box<[BitBoard; 64]>,
+    pub king: Box<[BitBoard; 64]>,
+}
+\end{lstlisting}

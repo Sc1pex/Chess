@@ -25,6 +25,15 @@ impl PieceKind {
     }
 }
 
+impl From<u32> for PieceKind {
+    fn from(value: u32) -> Self {
+        match value {
+            0..=5 => unsafe { std::mem::transmute(value as u8) },
+            _ => panic!("Invalid square index {}", value),
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Default, Serialize, Deserialize)]
 #[wasm_bindgen]
 pub enum Color {
@@ -59,5 +68,28 @@ impl Piece {
     #[wasm_bindgen(constructor)]
     pub fn new(kind: PieceKind, color: Color) -> Self {
         Self { kind, color }
+    }
+}
+
+impl Piece {
+    pub fn to_bits(self) -> u32 {
+        let b = if self.color == Color::White {
+            0b1000
+        } else {
+            0b0
+        };
+        let k = self.kind as u32;
+        b | k
+    }
+
+    pub fn from_bits(bits: u32) -> Self {
+        let color = if (bits & 0b1000) != 0 {
+            Color::White
+        } else {
+            Color::Black
+        };
+        let kind: PieceKind = (bits & 0b111).into();
+
+        Self { color, kind }
     }
 }

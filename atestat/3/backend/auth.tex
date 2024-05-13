@@ -1,0 +1,179 @@
+\newpage
+\subsubsection{Autentificare și înregistrare}
+
+Înregistrarea se face în mai mulți pași:
+\begin{enumerate}
+	\item Validarea datelor
+	      \begin{itemize}
+		      \item Usernameul trebuie să fie unic
+		      \item Parola trebuie să aibă minim 4 caractere
+	      \end{itemize}
+
+	\item Criptarea parolei
+
+	\item Inserarea în baza de date a userului
+
+	\item Generarea unui token unic pentru cookie
+\end{enumerate}
+
+\vspace{1cm}
+\begin{lstlisting}[language=RustHtml]
+pub async fn post(
+    State(state): State<AppState>,
+    Form(mut data): Form<RegisterForm>,
+) -> impl IntoResponse {
+    // Validarea lungimii parolei
+    if data.password.len() < 4 {
+        return Html(render_index(html!(
+			<div class="content">
+                {register_form(None, None, Some("Password must be at least 4 characters long"))}
+            </div>
+        )))
+        .into_response();
+    }
+    //Criptarea parolei
+    data.password = {
+        let salt = SaltString::generate(&mut OsRng);
+        let argon2 = Argon2::default();
+        argon2
+            .hash_password(data.password.as_bytes(), &salt)
+            .expect("Failed to hash password")
+            .to_string()
+    };
+
+    // Inserarea în baza de date
+    let q = sqlx::query!(
+        r#"
+        INSERT INTO users (username, password)
+        VALUES (?, ?)
+        "#,
+        data.username,
+        data.password,
+    )
+    .execute(&state.pool)
+    .await;
+    let id = sqlx::query!(
+        r#"
+        SELECT id FROM users
+        WHERE username = ?
+        "#,
+        data.username,
+    )
+    .fetch_one(&state.pool)
+    .await
+    .unwrap()
+    .id;
+
+    // Generarea unui token unic
+    let token = update_token(&state.pool, id).await.unwrap();
+
+    match q {
+        Ok(_) => {
+            let cookie = Cookie::build(("SESSION", token.to_string()))
+                .path("/")
+                .max_age(Duration::days(2))
+                .build();
+            let mut headers = HeaderMap::new();
+            headers.insert(SET_COOKIE, cookie.to_string().parse().unwrap());
+            (headers, Redirect::to("/")).into_response()
+        }
+
+        Err(e) => {
+            // Daca inserarea în baza de date a esuat deoarece
+            // usernameul nu este unic se afiseaza pagina de 
+            // înregistrare cu eroare
+            if let sqlx::Error::Database(db_err) = &e {
+                if db_err.kind() == sqlx::error::ErrorKind::UniqueViolation {
+                    return Html(render_index(html!(
+                            <div class="content">
+                                {register_form(None,Some("Username already exists"), None)}
+                            </div>
+                    )))
+                    .into_response();
+                }
+            }
+        }
+    }
+}
+\end{lstlisting}
+
+\newpage
+Autentificarea se face în mod asemănător cu înregistrarea:
+\begin{enumerate}
+
+	\item Validarea lungimii parolei
+
+	\item Verificarea usernameului în baza de date
+
+\end{enumerate}
+
+\begin{lstlisting}[language=RustHtml]
+pub async fn post(State(state): State<AppState>, Form(data): Form<LoginForm>) -> impl IntoResponse {
+    // Validarea lungimii parolei
+    if data.password.len() < 4 {
+        return Html(render_index(html!(
+            <div class="content">
+                {login_form(None, None, Some("Password must be at least 4 characters long"))}
+            </div>
+        )))
+        .into_response();
+    }
+
+    let q = sqlx::query_as!(
+        User,
+        r#"
+        SELECT * FROM users
+        WHERE username = ? 
+        "#,
+        data.username
+    )
+    .fetch_one(&state.pool)
+    .await;
+
+    match q {
+        Ok(user) => {
+            // Validarea parolei
+            let password = Argon2::default()
+                .verify_password(
+                    data.password.as_bytes(),
+                    &PasswordHash::new(&user.password).unwrap(),
+                )
+                .is_ok();
+            if password {
+                let mut token = user.token;
+                if token.is_none() {
+                    token = update_token(&state.pool, user.id).await;
+                }
+
+                let cookie = Cookie::build(("SESSION", token.unwrap().to_string()))
+                    .path("/")
+                    .max_age(Duration::days(2))
+                    .build();
+                let mut headers = HeaderMap::new();
+                headers.insert(SET_COOKIE, cookie.to_string().parse().unwrap());
+                (headers, Redirect::to("/")).into_response()
+            } else {
+                Html(render_index(html!(
+                    <div class="content">
+                        {login_form(Some(&data.username), None, Some("Invalid password"))}
+                    </div>
+                )))
+                .into_response()
+            }
+        }
+
+        Err(e) => {
+            // Daca usernameul nu exista se afiseaza pagina de 
+            // autentificare cu eroare
+            if let sqlx::Error::RowNotFound = e {
+                return Html(render_index(html!(
+                        <div class="content">
+                            {login_form(None,Some("Username dosen't exist"), None)}
+                        </div>
+                )))
+                .into_response();
+            }
+        }
+    }
+}
+\end{lstlisting}

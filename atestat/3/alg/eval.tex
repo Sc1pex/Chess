@@ -1,0 +1,131 @@
+\vspace{1cm}
+\subsubsection{Evaluarea unei poziții}
+\vspace{1cm}
+
+Evaluarea unei poziții este destul de rudimentară, însă suficientă. Astfel fiecare piesă are o
+valoare de bază:
+\begin{itemize}
+	\item pionul 100
+	\item calul și nebunul 300
+	\item tura 500
+	\item regina 900
+	\item regele 10000
+\end{itemize}
+De asemenea pentru fiecare pătrat de pe tablă există un bonus (pozitiv sau negativ) care
+îndrumă algoritmul să pună piesele pe pătrate în general bune.
+
+Calculul scorului unei pozitții se face astfel:
+\begin{enumerate}
+	\item Se adună la scor suma dintre valorile pieselor jucătorului curent și bonusul pentru
+	      tipul de piesă și pătrat
+	\item Se scad din scor suma dintre valorile pieselor oponentului și bonusul pentru
+	      tipul de piesă și pătrat
+\end{enumerate}
+
+\begin{lstlisting}[language=RustHtml]
+fn evaluate(board: &Board) -> i32 {
+    let score = |c: Color| {
+        let mut s = 0;
+        for p in PIECE_KINDS.into_iter() {
+            let mut b = board.board(Piece::new(p, c)).0;
+            while b != 0 {
+                let square = b.trailing_zeros() as usize;
+                b &= b - 1;
+                s += Self::piece_value(p);
+                s += if c == Color::White {
+                    Self::piece_square_value(p, square)
+                } else {
+                    Self::piece_square_value(p, Self::mirror_square(square))
+                };
+            }
+        }
+        s
+    };
+
+    let eval = score(Color::White) - score(Color::Black);
+    if board.side_to_move == Color::White {
+        eval
+    } else {
+        -eval
+    }
+}
+
+
+fn piece_value(piece_kind: PieceKind) -> i32 {
+    match piece_kind {
+        PieceKind::Pawn => 100,
+        PieceKind::Knight => 300,
+        PieceKind::Bishop => 300,
+        PieceKind::Rook => 500,
+        PieceKind::Queen => 900,
+        PieceKind::King => 10000,
+    }
+}
+
+const PAWN_SCORE: [i32; 64] = [
+     0,   0,   0,   0,   0,   0,   0,   0,
+     0,   0,   0, -10, -10,   0,   0,   0,
+     0,   0,   0,   5,   5,   0,   0,   0,
+     5,   5,  10,  20,  20,   5,   5,   5,
+    10,  10,  10,  20,  20,  10,  10,  10,
+    20,  20,  20,  30,  30,  30,  20,  20,
+    30,  30,  30,  40,  40,  30,  30,  30,
+    90,  90,  90,  90,  90,  90,  90,  90,
+];
+
+const KNIGHT_SCORE: [i32; 64] = [
+    -5, -10,   0,   0,   0,   0, -10,  -5,
+    -5,   0,   0,   0,   0,   0,   0,  -5,
+    -5,   5,  20,  10,  10,  20,   5,  -5,
+    -5,  10,  20,  30,  30,  20,  10,  -5,
+    -5,  10,  20,  30,  30,  20,  10,  -5,
+    -5,   5,  20,  20,  20,  20,   5,  -5,
+    -5,   0,   0,  10,  10,   0,   0,  -5,
+    -5,   0,   0,   0,   0,   0,   0,  -5,
+];
+
+const BISHOP_SCORE: [i32; 64] =  [
+     0,   0, -10,   0,   0, -10,   0,   0,
+     0,  30,   0,   0,   0,   0,  30,   0,
+     0,  10,   0,   0,   0,   0,  10,   0,
+     0,   0,  10,  20,  20,  10,   0,   0,
+     0,   0,  10,  20,  20,  10,   0,   0,
+     0,   0,   0,  10,  10,   0,   0,   0,
+     0,   0,   0,   0,   0,   0,   0,   0,
+     0,   0,   0,   0,   0,   0,   0,   0,
+];
+
+const ROOK_SCORE: [i32; 64] = [
+     0,   0,   0,  20,  20,   0,   0,   0,
+     0,   0,  10,  20,  20,  10,   0,   0,
+     0,   0,  10,  20,  20,  10,   0,   0,
+     0,   0,  10,  20,  20,  10,   0,   0,
+     0,   0,  10,  20,  20,  10,   0,   0,
+     0,   0,  10,  20,  20,  10,   0,   0,
+    50,  50,  50,  50,  50,  50,  50,  50,
+    50,  50,  50,  50,  50,  50,  50,  50,
+];
+
+const KING_SCORE: [i32; 64] = [
+     0,   0,   5,   0, -15,   0,  10,   0,
+     0,   5,   5,  -5,  -5,   0,   5,   0,
+     0,   0,   5,  10,  10,   5,   0,   0,
+     0,   5,  10,  20,  20,  10,   5,   0,
+     0,   5,  10,  20,  20,  10,   5,   0,
+     0,   5,   5,  10,  10,   5,   5,   0,
+     0,   0,   5,   5,   5,   5,   0,   0,
+     0,   0,   0,   0,   0,   0,   0,   0,
+];
+
+fn piece_square_value(piece: PieceKind, square: usize) -> i32 {
+    match piece {
+        PieceKind::Pawn => Self::PAWN_SCORE[square],
+        PieceKind::Knight => Self::KNIGHT_SCORE[square],
+        PieceKind::Bishop => Self::BISHOP_SCORE[square],
+        PieceKind::Rook => Self::ROOK_SCORE[square],
+        PieceKind::Queen => 0,
+        PieceKind::King => Self::KING_SCORE[square],
+    }
+}
+
+\end{lstlisting}

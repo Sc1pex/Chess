@@ -1,0 +1,36 @@
+\vspace{3cm}
+\subsubsection{Pagina cu profilul utilizatorilor}
+
+\vspace{1cm}
+\begin{center}
+	\includegraphics[width=15cm]{3/frontend/userprofile.png}
+\end{center}
+\vspace{1cm}
+
+\begin{lstlisting}[language=RustHtml]
+<div class="content">
+    <h1>{&user.username}</h1>
+    {stats_html(stats)}
+    <h2>"Games"</h2>
+    {games_list(games)}
+</div>
+\end{lstlisting}
+
+\begin{lstlisting}[language=RustHtml]
+fn stats_html(stats: [i64; 3]) -> String {
+    html! (
+        <div class="stats">
+            <h2>"Stats"</h2>
+            <p>
+                "Wins: " {stats[0]}
+            </p>
+            <p>
+                "Draws: " {stats[1]}
+            </p>
+            <p>
+                "Losses: " {stats[2]}
+            </p>
+        </div>
+    )
+}
+\end{lstlisting}

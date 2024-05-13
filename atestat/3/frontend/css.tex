@@ -1,0 +1,224 @@
+\vspace{3cm}
+\subsubsection{Stilurile CSS}
+
+\begin{lstlisting}[]
+body {
+  margin: 0;
+  height: 100%;
+  background-color: #282828;
+  color: white;
+  font-family: Roboto;
+}
+
+a,
+button {
+  text-decoration: none;
+  color: white;
+}
+
+.navbar-wrapper {
+  width: 100%;
+  height: 50px;
+  background-color: #404040;
+  position: absolute;
+  top: 0;
+}
+
+.navbar {
+  height: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.login:hover {
+  color: #0ea5e9;
+}
+
+.register {
+  background-color: #0ea5e9;
+  padding: 5px 10px;
+  border-radius: 5px;
+}
+
+.content {
+  padding-top: 100px;
+  max-width: 800px;
+  margin: 0 auto;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.game {
+  cursor: pointer;
+}
+
+.game:hover {
+  background-color: #525252;
+}
+
+.newgame {
+  padding: 10px 20px;
+  border-radius: 10px;
+  background-color: #0ea5e9;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  color: white;
+}
+
+.field {
+  background-color: #404040;
+  color: white;
+  border: 1px solid #525252;
+  border-radius: 5px;
+  padding: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.register-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 250px;
+}
+
+.register-btn {
+  background-color: #0ea5e9;
+  padding: 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  border: none;
+  color: white;
+  width: 80px;
+  margin-top: 10px;
+}
+
+.error {
+  color: red;
+  display: inline-block;
+  font-size: 12px;
+}
+
+.field-div {
+  width: 100%;
+}
+
+.below-form {
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px solid #525252;
+  font-size: 14px;
+}
+
+.games {
+  text-align: center;
+  border: 0px;
+  background-color: #404040;
+  border-spacing: 0px;
+}
+
+.games-header {
+  font-size: 14px;
+  background-color: #171717;
+}
+
+td {
+  border-bottom: 1px solid #525252;
+  padding: 10px 10px;
+}
+
+.player:hover {
+  text-decoration: wavy underline;
+}
+
+.gameopts {
+  display: flex;
+  gap: 10px;
+  flex-direction: column;
+  align-items: center;
+}
+
+.coloropt {
+  display: flex;
+  gap: 4px;
+  flex-direction: column;
+  align-items: center;
+}
+
+.coloropt input:checked+label>.colorselect {
+  border: 2px solid #0ea5e9;
+  border-radius: 5px;
+  box-sizing: border-box;
+}
+
+.colorselect {
+  cursor: pointer;
+}
+
+img {
+  width: 50px;
+  height: 50px;
+}
+
+.tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip .tooltiptext {
+  visibility: hidden;
+  background-color: #52525b;
+  color: white;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px;
+  position: absolute;
+  z-index: 1;
+  bottom: -100%;
+  left: 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+  transition-delay: 0.7s;
+}
+
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+  opacity: 1;
+}
+
+.tooltip .tooltiptext::after {
+  content: " ";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent transparent #52525b transparent;
+}
+
+.divopt {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.difficulty {
+  background-color: #282828;
+  color: white;
+  border: 0;
+  border-bottom: 1px solid #525252;
+}
+\end{lstlisting}

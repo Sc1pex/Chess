@@ -1,0 +1,31 @@
+\vspace{2cm}
+\subsubsection{Baza de date}
+
+Baza de date conține următoarele tabele:
+
+\begin{itemize}
+
+	\item Tabelul User
+	      \begin{lstlisting}[language=sql]
+CREATE TABLE users (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(256) NOT NULL UNIQUE,
+  password VARCHAR(256) NOT NULL,
+  token VARCHAR(36) UNIQUE,
+);
+\end{lstlisting}
+
+	\item Tabelul Games
+	      \begin{lstlisting}[language=sql]
+CREATE TABLE games (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  player VARCHAR(64) REFERENCES users(id),
+  moves JSON NOT NULL,
+  result VARCHAR(256) NOT NULL,
+  difficulty VARCHAR(8),
+
+  played_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+\end{lstlisting}
+
+\end{itemize}

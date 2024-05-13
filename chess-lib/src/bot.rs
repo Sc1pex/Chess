@@ -1,7 +1,6 @@
 use crate::{
     bitboardindex::BitBoardIdx,
     board::Board,
-    console_log,
     movegen::{legal_moves, Move, SpecialMove},
     piece::{Color, Piece, PieceKind},
     square::Square,
@@ -174,10 +173,8 @@ impl Bot {
             return self.quiescence(board, alpha, beta, ply);
         }
 
-        // TODO: Incremental hash update
         let hash = self.zobrist.hash(&board);
         if let Some(score) = self.transposition_table.probe(hash, depth, alpha, beta) {
-            self.tt_hits += 1;
             return score;
         }
 

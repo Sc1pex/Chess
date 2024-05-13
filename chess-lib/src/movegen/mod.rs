@@ -79,6 +79,37 @@ pub enum SpecialMove {
     Castle,
 }
 
+impl SpecialMove {
+    pub fn to_bits(self) -> u32 {
+        match self {
+            SpecialMove::Promotion(p) => {
+                let mut b = p as u32;
+                b <<= 2;
+                b |= 0b00;
+                b
+            }
+            SpecialMove::EnPassant => 0b01,
+            SpecialMove::DoublePawnPush => 0b10,
+            SpecialMove::Castle => 0b11,
+        }
+    }
+
+    pub fn from_bits(bits: u32) -> Self {
+        let bits = bits & 0b111111;
+        let s = bits & 0b11;
+        match s {
+            0b00 => {
+                let p = bits >> 2;
+                Self::Promotion(p.into())
+            }
+            0b01 => Self::EnPassant,
+            0b10 => Self::DoublePawnPush,
+            0b11 => Self::Castle,
+            _ => unreachable!(),
+        }
+    }
+}
+
 pub fn legal_moves(board: &Board) -> Box<[Move]> {
     generate_moves(board)
         .into_iter()
@@ -135,11 +166,10 @@ pub fn bishop_moves(
         while moves != 0 {
             let to = Square::from(moves.0.trailing_zeros() as u64);
             moves &= moves - 1;
-            vmoves.push(Move {
+            vmoves.push(Move::new(
                 from,
                 to,
-                capture: false,
-                piece: Piece::new(
+                Piece::new(
                     if queen {
                         PieceKind::Queen
                     } else {
@@ -147,17 +177,17 @@ pub fn bishop_moves(
                     },
                     board.side_to_move,
                 ),
-                special: None,
-            });
+                false,
+                None,
+            ));
         }
         while attacks != 0 {
             let to = Square::from(attacks.0.trailing_zeros() as u64);
             attacks &= attacks - 1;
-            vmoves.push(Move {
+            vmoves.push(Move::new(
                 from,
                 to,
-                capture: true,
-                piece: Piece::new(
+                Piece::new(
                     if queen {
                         PieceKind::Queen
                     } else {
@@ -165,8 +195,9 @@ pub fn bishop_moves(
                     },
                     board.side_to_move,
                 ),
-                special: None,
-            })
+                true,
+                None,
+            ))
         }
 
         bishops &= bishops - 1;
@@ -189,11 +220,10 @@ pub fn rook_moves(
         while moves != 0 {
             let to = Square::from(moves.0.trailing_zeros() as u64);
             moves &= moves - 1;
-            vmoves.push(Move {
+            vmoves.push(Move::new(
                 from,
                 to,
-                capture: false,
-                piece: Piece::new(
+                Piece::new(
                     if queen {
                         PieceKind::Queen
                     } else {
@@ -201,17 +231,17 @@ pub fn rook_moves(
                     },
                     board.side_to_move,
                 ),
-                special: None,
-            });
+                false,
+                None,
+            ));
         }
         while attacks != 0 {
             let to = Square::from(attacks.0.trailing_zeros() as u64);
             attacks &= attacks - 1;
-            vmoves.push(Move {
+            vmoves.push(Move::new(
                 from,
                 to,
-                capture: true,
-                piece: Piece::new(
+                Piece::new(
                     if queen {
                         PieceKind::Queen
                     } else {
@@ -219,8 +249,9 @@ pub fn rook_moves(
                     },
                     board.side_to_move,
                 ),
-                special: None,
-            })
+                true,
+                None,
+            ))
         }
 
         rooks &= rooks - 1;
@@ -243,24 +274,24 @@ pub fn knight_moves(
         while moves != 0 {
             let to = Square::from(moves.0.trailing_zeros() as u64);
             moves &= moves - 1;
-            vmoves.push(Move {
+            vmoves.push(Move::new(
                 from,
                 to,
-                capture: false,
-                piece: Piece::new(PieceKind::Knight, board.side_to_move),
-                special: None,
-            });
+                Piece::new(PieceKind::Knight, board.side_to_move),
+                false,
+                None,
+            ));
         }
         while attacks != 0 {
             let to = Square::from(attacks.0.trailing_zeros() as u64);
             attacks &= attacks - 1;
-            vmoves.push(Move {
+            vmoves.push(Move::new(
                 from,
                 to,
-                capture: true,
-                piece: Piece::new(PieceKind::Knight, board.side_to_move),
-                special: None,
-            })
+                Piece::new(PieceKind::Knight, board.side_to_move),
+                true,
+                None,
+            ))
         }
 
         knights &= knights - 1;
@@ -283,24 +314,24 @@ pub fn king_moves(
         while moves != 0 {
             let to = Square::from(moves.0.trailing_zeros() as u64);
             moves &= moves - 1;
-            vmoves.push(Move {
+            vmoves.push(Move::new(
                 from,
                 to,
-                capture: false,
-                piece: Piece::new(PieceKind::King, board.side_to_move),
-                special: None,
-            });
+                Piece::new(PieceKind::King, board.side_to_move),
+                false,
+                None,
+            ));
         }
         while attacks != 0 {
             let to = Square::from(attacks.0.trailing_zeros() as u64);
             attacks &= attacks - 1;
-            vmoves.push(Move {
+            vmoves.push(Move::new(
                 from,
                 to,
-                capture: true,
-                piece: Piece::new(PieceKind::King, board.side_to_move),
-                special: None,
-            })
+                Piece::new(PieceKind::King, board.side_to_move),
+                true,
+                None,
+            ))
         }
 
         king &= king - 1;
@@ -366,17 +397,17 @@ fn castle(
             .any(|&s| square_attacked(board, s, color.opposite()));
 
         if squares_empty && !squares_attacked {
-            vmoves.push(Move {
-                from: if color == Color::White {
+            vmoves.push(Move::new(
+                if color == Color::White {
                     Square::E1
                 } else {
                     Square::E8
                 },
-                to: squares[1],
-                capture: false,
-                piece: Piece::new(PieceKind::King, color),
-                special: Some(SpecialMove::Castle),
-            });
+                squares[1],
+                Piece::new(PieceKind::King, color),
+                false,
+                Some(SpecialMove::Castle),
+            ));
         }
     }
 }
@@ -397,46 +428,46 @@ pub fn white_pawn_moves(board: &Board, vmoves: &mut Vec<Move>) {
         while moves != 0 {
             let to = Square::from(moves.0.trailing_zeros() as u64);
             if to.rank() == 7 {
-                vmoves.push(Move {
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: false,
-                    piece: Piece::new(PieceKind::Pawn, Color::White),
-                    special: Some(SpecialMove::Promotion(PieceKind::Queen)),
-                });
-                vmoves.push(Move {
+                    Piece::new(PieceKind::Pawn, Color::White),
+                    false,
+                    Some(SpecialMove::Promotion(PieceKind::Queen)),
+                ));
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: false,
-                    piece: Piece::new(PieceKind::Pawn, Color::White),
-                    special: Some(SpecialMove::Promotion(PieceKind::Rook)),
-                });
-                vmoves.push(Move {
+                    Piece::new(PieceKind::Pawn, Color::White),
+                    false,
+                    Some(SpecialMove::Promotion(PieceKind::Rook)),
+                ));
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: false,
-                    piece: Piece::new(PieceKind::Pawn, Color::White),
-                    special: Some(SpecialMove::Promotion(PieceKind::Bishop)),
-                });
-                vmoves.push(Move {
+                    Piece::new(PieceKind::Pawn, Color::White),
+                    false,
+                    Some(SpecialMove::Promotion(PieceKind::Bishop)),
+                ));
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: false,
-                    piece: Piece::new(PieceKind::Pawn, Color::White),
-                    special: Some(SpecialMove::Promotion(PieceKind::Knight)),
-                });
+                    Piece::new(PieceKind::Pawn, Color::White),
+                    false,
+                    Some(SpecialMove::Promotion(PieceKind::Knight)),
+                ));
             } else {
-                vmoves.push(Move {
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: false,
-                    piece: Piece::new(PieceKind::Pawn, Color::White),
-                    special: if from.rank() == 1 && to.rank() == 3 {
+                    Piece::new(PieceKind::Pawn, Color::White),
+                    false,
+                    if from.rank() == 1 && to.rank() == 3 {
                         Some(SpecialMove::DoublePawnPush)
                     } else {
                         None
                     },
-                });
+                ));
             }
             moves &= moves - 1;
         }
@@ -445,59 +476,59 @@ pub fn white_pawn_moves(board: &Board, vmoves: &mut Vec<Move>) {
         while attacks != 0 {
             let to = Square::from(attacks.0.trailing_zeros() as u64);
             if to.rank() == 7 {
-                vmoves.push(Move {
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: true,
-                    piece: Piece::new(PieceKind::Pawn, Color::White),
-                    special: Some(SpecialMove::Promotion(PieceKind::Queen)),
-                });
-                vmoves.push(Move {
+                    Piece::new(PieceKind::Pawn, Color::White),
+                    true,
+                    Some(SpecialMove::Promotion(PieceKind::Queen)),
+                ));
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: true,
-                    piece: Piece::new(PieceKind::Pawn, Color::White),
-                    special: Some(SpecialMove::Promotion(PieceKind::Rook)),
-                });
-                vmoves.push(Move {
+                    Piece::new(PieceKind::Pawn, Color::White),
+                    true,
+                    Some(SpecialMove::Promotion(PieceKind::Rook)),
+                ));
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: true,
-                    piece: Piece::new(PieceKind::Pawn, Color::White),
-                    special: Some(SpecialMove::Promotion(PieceKind::Bishop)),
-                });
-                vmoves.push(Move {
+                    Piece::new(PieceKind::Pawn, Color::White),
+                    true,
+                    Some(SpecialMove::Promotion(PieceKind::Bishop)),
+                ));
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: true,
-                    piece: Piece::new(PieceKind::Pawn, Color::White),
-                    special: Some(SpecialMove::Promotion(PieceKind::Knight)),
-                });
+                    Piece::new(PieceKind::Pawn, Color::White),
+                    true,
+                    Some(SpecialMove::Promotion(PieceKind::Knight)),
+                ));
             } else {
-                vmoves.push(Move {
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: true,
-                    piece: Piece::new(PieceKind::Pawn, Color::White),
-                    special: if from.rank() == 1 && to.rank() == 3 {
+                    Piece::new(PieceKind::Pawn, Color::White),
+                    true,
+                    if from.rank() == 1 && to.rank() == 3 {
                         Some(SpecialMove::DoublePawnPush)
                     } else {
                         None
                     },
-                });
+                ));
             }
             attacks &= attacks - 1;
         }
         if let Some(ep) = board.en_passant {
             let epb = BitBoard(1 << ep as u64);
             if PRECALC.pawns[from.idx_usize()][0] & epb != 0 {
-                vmoves.push(Move {
+                vmoves.push(Move::new(
                     from,
-                    to: ep,
-                    capture: true,
-                    piece: Piece::new(PieceKind::Pawn, Color::White),
-                    special: Some(SpecialMove::EnPassant),
-                });
+                    ep,
+                    Piece::new(PieceKind::Pawn, Color::White),
+                    true,
+                    Some(SpecialMove::EnPassant),
+                ));
             }
         }
     }
@@ -519,46 +550,46 @@ pub fn black_pawn_moves(board: &Board, vmoves: &mut Vec<Move>) {
         while moves != 0 {
             let to = Square::from(moves.0.trailing_zeros() as u64);
             if to.rank() == 0 {
-                vmoves.push(Move {
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: false,
-                    piece: Piece::new(PieceKind::Pawn, Color::Black),
-                    special: Some(SpecialMove::Promotion(PieceKind::Queen)),
-                });
-                vmoves.push(Move {
+                    Piece::new(PieceKind::Pawn, Color::Black),
+                    false,
+                    Some(SpecialMove::Promotion(PieceKind::Queen)),
+                ));
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: false,
-                    piece: Piece::new(PieceKind::Pawn, Color::Black),
-                    special: Some(SpecialMove::Promotion(PieceKind::Rook)),
-                });
-                vmoves.push(Move {
+                    Piece::new(PieceKind::Pawn, Color::Black),
+                    false,
+                    Some(SpecialMove::Promotion(PieceKind::Rook)),
+                ));
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: false,
-                    piece: Piece::new(PieceKind::Pawn, Color::Black),
-                    special: Some(SpecialMove::Promotion(PieceKind::Bishop)),
-                });
-                vmoves.push(Move {
+                    Piece::new(PieceKind::Pawn, Color::Black),
+                    false,
+                    Some(SpecialMove::Promotion(PieceKind::Bishop)),
+                ));
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: false,
-                    piece: Piece::new(PieceKind::Pawn, Color::Black),
-                    special: Some(SpecialMove::Promotion(PieceKind::Knight)),
-                });
+                    Piece::new(PieceKind::Pawn, Color::Black),
+                    false,
+                    Some(SpecialMove::Promotion(PieceKind::Knight)),
+                ));
             } else {
-                vmoves.push(Move {
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: false,
-                    piece: Piece::new(PieceKind::Pawn, Color::Black),
-                    special: if from.rank() == 6 && to.rank() == 4 {
+                    Piece::new(PieceKind::Pawn, Color::Black),
+                    false,
+                    if from.rank() == 6 && to.rank() == 4 {
                         Some(SpecialMove::DoublePawnPush)
                     } else {
                         None
                     },
-                });
+                ));
             }
             moves &= moves - 1;
         }
@@ -567,59 +598,59 @@ pub fn black_pawn_moves(board: &Board, vmoves: &mut Vec<Move>) {
         while attacks != 0 {
             let to = Square::from(attacks.0.trailing_zeros() as u64);
             if to.rank() == 0 {
-                vmoves.push(Move {
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: true,
-                    piece: Piece::new(PieceKind::Pawn, Color::Black),
-                    special: Some(SpecialMove::Promotion(PieceKind::Queen)),
-                });
-                vmoves.push(Move {
+                    Piece::new(PieceKind::Pawn, Color::Black),
+                    true,
+                    Some(SpecialMove::Promotion(PieceKind::Queen)),
+                ));
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: true,
-                    piece: Piece::new(PieceKind::Pawn, Color::Black),
-                    special: Some(SpecialMove::Promotion(PieceKind::Rook)),
-                });
-                vmoves.push(Move {
+                    Piece::new(PieceKind::Pawn, Color::Black),
+                    true,
+                    Some(SpecialMove::Promotion(PieceKind::Rook)),
+                ));
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: true,
-                    piece: Piece::new(PieceKind::Pawn, Color::Black),
-                    special: Some(SpecialMove::Promotion(PieceKind::Bishop)),
-                });
-                vmoves.push(Move {
+                    Piece::new(PieceKind::Pawn, Color::Black),
+                    true,
+                    Some(SpecialMove::Promotion(PieceKind::Bishop)),
+                ));
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: true,
-                    piece: Piece::new(PieceKind::Pawn, Color::Black),
-                    special: Some(SpecialMove::Promotion(PieceKind::Knight)),
-                });
+                    Piece::new(PieceKind::Pawn, Color::Black),
+                    true,
+                    Some(SpecialMove::Promotion(PieceKind::Knight)),
+                ));
             } else {
-                vmoves.push(Move {
+                vmoves.push(Move::new(
                     from,
                     to,
-                    capture: true,
-                    piece: Piece::new(PieceKind::Pawn, Color::Black),
-                    special: if from.rank() == 6 && to.rank() == 4 {
+                    Piece::new(PieceKind::Pawn, Color::Black),
+                    true,
+                    if from.rank() == 6 && to.rank() == 4 {
                         Some(SpecialMove::DoublePawnPush)
                     } else {
                         None
                     },
-                });
+                ));
             }
             attacks &= attacks - 1;
         }
         if let Some(ep) = board.en_passant {
             let epb = BitBoard(1 << ep as u64);
             if PRECALC.pawns[from.idx_usize()][1] & epb != 0 {
-                vmoves.push(Move {
+                vmoves.push(Move::new(
                     from,
-                    to: ep,
-                    capture: true,
-                    piece: Piece::new(PieceKind::Pawn, Color::Black),
-                    special: Some(SpecialMove::EnPassant),
-                });
+                    ep,
+                    Piece::new(PieceKind::Pawn, Color::Black),
+                    true,
+                    Some(SpecialMove::EnPassant),
+                ));
             }
         }
     }

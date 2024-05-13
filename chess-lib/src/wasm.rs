@@ -5,6 +5,7 @@ use crate::{
     game::Game,
     movegen::{legal_moves, Move, SpecialMove},
     piece::Piece,
+    square::Square,
 };
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -17,10 +18,13 @@ pub struct WasmMove {
     pub from: u8,
     pub to: u8,
     pub capture: Option<u8>,
-    pub piece: crate::piece::PieceKind,
+    pub piece: crate::piece::Piece,
+    pub piece_kind: crate::piece::PieceKind,
 
     pub promotion: Option<crate::piece::PieceKind>,
     pub castle: Option<CastleMove>,
+
+    mv: Move,
 }
 
 #[wasm_bindgen]
@@ -57,7 +61,8 @@ impl From<&Move> for WasmMove {
             } else {
                 None
             },
-            piece: value.piece.kind,
+            piece: value.piece,
+            piece_kind: value.piece.kind,
 
             promotion: match value.special {
                 Some(SpecialMove::Promotion(p)) => Some(p),
@@ -73,6 +78,8 @@ impl From<&Move> for WasmMove {
                 }
                 _ => None,
             },
+
+            mv: value.clone(),
         }
     }
 }
@@ -80,6 +87,43 @@ impl From<&Move> for WasmMove {
 impl From<Move> for WasmMove {
     fn from(value: Move) -> Self {
         Self::from(&value)
+    }
+}
+
+impl From<WasmMove> for Move {
+    fn from(value: WasmMove) -> Self {
+        value.mv
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct WasmTmpMove {
+    pub from: Square,
+    pub to: Square,
+    pub capture: Option<u8>,
+    pub piece: crate::piece::Piece,
+    pub piece_kind: crate::piece::PieceKind,
+
+    pub promotion: Option<crate::piece::PieceKind>,
+    pub castle: Option<CastleMove>,
+
+    mv: Move,
+}
+
+impl From<WasmTmpMove> for WasmMove {
+    fn from(value: WasmTmpMove) -> Self {
+        Self {
+            from: value.from as u8,
+            to: value.to as u8,
+            capture: value.capture,
+            piece: value.piece,
+            piece_kind: value.piece_kind,
+
+            promotion: value.promotion,
+            castle: value.castle,
+
+            mv: value.mv,
+        }
     }
 }
 
@@ -104,6 +148,8 @@ impl WasmGame {
         console_error_panic_hook::set_once();
 
         let move_json: String = serde_json::from_str(&move_json).unwrap();
+        console_log!("::{}::", move_json);
+
         let moves: Vec<Move> = serde_json::from_str(&move_json).unwrap();
         Self(Game::from_moves(moves))
     }
@@ -225,7 +271,7 @@ pub fn bot_move(board: WasmBoard, difficulty: Difficulty) -> BotMove {
     let (depth, tt_size, max_time) = match difficulty {
         Difficulty::Easy => (5, 10000000, 3000),
         Difficulty::Medium => (7, 10000000, 3000),
-        Difficulty::Hard => (30, 10000000, 3000),
+        Difficulty::Hard => (30, 10000000, 10000),
     };
 
     let mut bot = Bot::new(depth, tt_size, max_time);

@@ -1,0 +1,80 @@
+\newpage
+\subsubsection{Trimiterea jocurilor către server}
+
+La finalul jocului frontendul face un request POST către backend care conține datele despre joc,
+encodate în format JSON:
+\begin{itemize}
+	\item Rezultatul jocului: remiză, câștig sau pierdere
+	\item Dificultatea la care a fost setat algoritmul
+	\item Un array ce conține mutările care s-au făcut în joc, în ordine
+\end{itemize}
+
+Funcția din TypeScript care face requestul
+\begin{lstlisting}[language=RustHtml]
+send_game_to_server() {
+  let result = "Draw";
+  if (this.game.game_state() == GameState.Checkmate) {
+    if (this.game.side_to_move() == this.bot_color) {
+      result = "Win";
+    } else {
+      result = "Loss";
+    }
+  }
+
+  fetch("/api/submit_game", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      result: result,
+      moves: this.game.moves_server(),
+      difficulty: this.difficulty,
+    }),
+  });
+}
+\end{lstlisting}
+
+În backend, sunt decodate datele, procesate și adăugate în baza de date. Dacă utilizatorul
+este autentificat se ține minte în baza de date, dacă nu se trece ca Guest.
+\begin{lstlisting}[language=RustHtml]
+async fn submit_game(
+    State(state): State<AppState>,
+    cookies: TypedHeader<Cookie>,
+    Json(data): Json<GameDataJson>,
+) {
+    let user = get_user_token(cookies);
+    let difficulty = match data.difficulty {
+        0 => "Easy",
+        1 => "Medium",
+        2 => "Hard",
+        _ => "-",
+    };
+
+    match user {
+        Some(id) => {
+            sqlx::query!(
+                "INSERT INTO games (player, moves, result, difficulty) VALUES (?, ?, ?, ?)",
+                id,
+                data.moves,
+                data.result,
+                difficulty
+            )
+            .execute(&state.pool)
+            .await
+            .unwrap();
+        }
+        None => {
+            sqlx::query!(
+                "INSERT INTO games (moves, result, difficulty) VALUES (?, ?, ?)",
+                data.moves,
+                data.result,
+                difficulty
+            )
+            .execute(&state.pool)
+            .await
+            .unwrap();
+        }
+    }
+}
+\end{lstlisting}

@@ -204,7 +204,7 @@ function move_to_str(m: WasmMove): string {
     }
   }
 
-  if (m.piece == PieceKind.Pawn) {
+  if (m.piece.kind == PieceKind.Pawn) {
     let move = "";
     if (m.capture) {
       move = `${idx_to_square(m.from)[0]}x${idx_to_square(m.to)}`.toLowerCase();
@@ -218,7 +218,7 @@ function move_to_str(m: WasmMove): string {
 
     return move;
   }
-  let move = piece_unicode(m.piece);
+  let move = piece_unicode(m.piece.kind);
   if (m.capture) {
     move += "x";
   }

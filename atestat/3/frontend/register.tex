@@ -1,0 +1,53 @@
+\vspace{3cm}
+\subsubsection{Pagina de înregistrare}
+
+\vspace{1cm}
+\begin{center}
+	\includegraphics[width=15cm]{3/frontend/register.png}
+\end{center}
+\vspace{1cm}
+
+\begin{lstlisting}[language=RustHtml]
+fn register_form(
+    username_value: Option<&str>,
+    username_error: Option<&str>,
+    password_error: Option<&str>,
+) -> String {
+    html! (
+    <form action="/register" class="register-form" method="post">
+        <div class="field-div">
+            <input
+                type="text"
+                id="username"
+                name="username"
+                placeholder="Username: "
+                class="field"
+                value={username_value.unwrap_or("")}
+                required
+            />
+            <span class="error">{username_error.unwrap_or("")}</span>
+        </div>
+        <div class="field-div">
+            <input
+                type="password"
+                id="password"
+                name="password"
+                placeholder="Password: "
+                class="field"
+                required
+            />
+            <span class="error">{password_error.unwrap_or("")}</span>
+        </div>
+        <button type="submit" class="register-btn">"Register"</button>
+    </form>
+
+    <div class="below-form">
+        <a href="/login" class="login">"Already have an account? Login here"</a>
+    </div>
+    )
+}
+\end{lstlisting}
+
+Form-ul de înregistrare are și câmpuri pentru erori, în cazul în care username-ul este
+prea scurt sau există un cont cu același username, sau în cazul în care parola este prea
+scurtă.
